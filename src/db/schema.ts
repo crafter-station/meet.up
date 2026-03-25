@@ -25,5 +25,6 @@ export const messages = pgTable("messages", {
 		.notNull(),
 	username: text("username").notNull(),
 	content: text("content").notNull(),
+	type: text("type").notNull().default("chat"), // "chat" | "transcript"
 	createdAt: timestamp("created_at").defaultNow().notNull(),
 });

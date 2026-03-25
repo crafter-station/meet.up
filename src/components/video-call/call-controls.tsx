@@ -1,0 +1,102 @@
+"use client";
+
+import { Button } from "@/components/ui/button";
+import { useDaily, useLocalParticipant } from "@daily-co/daily-react";
+import {
+	Captions,
+	MessageSquare,
+	Mic,
+	MicOff,
+	PhoneOff,
+	Video,
+	VideoOff,
+} from "lucide-react";
+
+interface CallControlsProps {
+	activePanel: "chat" | "transcript" | null;
+	onTogglePanel: (panel: "chat" | "transcript" | null) => void;
+}
+
+export function CallControls({
+	activePanel,
+	onTogglePanel,
+}: CallControlsProps) {
+	const daily = useDaily();
+	const localParticipant = useLocalParticipant();
+	const isMicOn = localParticipant?.audio;
+	const isCamOn = localParticipant?.video;
+
+	const toggleMic = () => daily?.setLocalAudio(!isMicOn);
+	const toggleCam = () => daily?.setLocalVideo(!isCamOn);
+	const leave = () => {
+		daily?.leave();
+		daily?.destroy();
+		window.location.href = "/";
+	};
+
+	return (
+		<div className="flex items-center justify-center gap-2 border-t border-border px-4 py-3">
+			<Button
+				variant={isMicOn ? "secondary" : "destructive"}
+				size="icon"
+				className="rounded-full h-12 w-12"
+				onClick={toggleMic}
+				title={isMicOn ? "Mute" : "Unmute"}
+			>
+				{isMicOn ? (
+					<Mic className="h-5 w-5" />
+				) : (
+					<MicOff className="h-5 w-5" />
+				)}
+			</Button>
+
+			<Button
+				variant={isCamOn ? "secondary" : "destructive"}
+				size="icon"
+				className="rounded-full h-12 w-12"
+				onClick={toggleCam}
+				title={isCamOn ? "Turn off camera" : "Turn on camera"}
+			>
+				{isCamOn ? (
+					<Video className="h-5 w-5" />
+				) : (
+					<VideoOff className="h-5 w-5" />
+				)}
+			</Button>
+
+			<Button
+				variant="destructive"
+				size="icon"
+				className="rounded-full h-12 w-12"
+				onClick={leave}
+				title="Leave call"
+			>
+				<PhoneOff className="h-5 w-5" />
+			</Button>
+
+			<div className="mx-2 h-8 w-px bg-border" />
+
+			<Button
+				variant={activePanel === "chat" ? "default" : "secondary"}
+				size="icon"
+				className="rounded-full h-12 w-12"
+				onClick={() => onTogglePanel(activePanel === "chat" ? null : "chat")}
+				title="Chat"
+			>
+				<MessageSquare className="h-5 w-5" />
+			</Button>
+
+			<Button
+				variant={activePanel === "transcript" ? "default" : "secondary"}
+				size="icon"
+				className="rounded-full h-12 w-12"
+				onClick={() =>
+					onTogglePanel(activePanel === "transcript" ? null : "transcript")
+				}
+				title="Transcription"
+			>
+				<Captions className="h-5 w-5" />
+			</Button>
+		</div>
+	);
+}

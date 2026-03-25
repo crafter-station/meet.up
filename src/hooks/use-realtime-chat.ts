@@ -1,23 +1,27 @@
 "use client";
 
-import { getMessages, sendMessage } from "@/app/actions";
+import { getMessages, saveTranscript, sendMessage } from "@/app/actions";
+import type { ChatMessage } from "@/components/video-call/types";
 import { getSupabaseClient } from "@/lib/supabase";
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { ChatMessage } from "@/components/video-call/types";
 
 type ChatEvent =
 	| { type: "message:add"; message: ChatMessage }
-	| { type: "messages:sync"; messages: ChatMessage[] };
+	| { type: "messages:sync"; messages: ChatMessage[] }
+	| { type: "partial:update"; text: string; speaker: string };
 
 export function useRealtimeChat(roomId: string, username: string) {
 	const [messages, setMessages] = useState<ChatMessage[]>([]);
+	const [partialTexts, setPartialTexts] = useState<
+		Record<string, string>
+	>({});
 	const channelRef = useRef<ReturnType<
 		ReturnType<typeof getSupabaseClient>["channel"]
 	> | null>(null);
 	const messagesRef = useRef(messages);
 	messagesRef.current = messages;
 
-	// Load existing messages on mount
+	// Load existing chat messages on mount
 	useEffect(() => {
 		getMessages(roomId).then(({ messages: existing }) => {
 			setMessages(existing);
@@ -27,11 +31,10 @@ export function useRealtimeChat(roomId: string, username: string) {
 	// Set up realtime channel
 	useEffect(() => {
 		const supabase = getSupabaseClient();
-		const channel = supabase.channel(`chat:${roomId}`);
+		const channel = supabase.channel(`room:${roomId}`);
 
 		channel
 			.on("presence", { event: "join" }, () => {
-				// Sync messages to newly joined users
 				if (messagesRef.current.length > 0) {
 					channel.send({
 						type: "broadcast",
@@ -50,21 +53,39 @@ export function useRealtimeChat(roomId: string, username: string) {
 				({
 					payload,
 				}: { payload: ChatEvent & { username: string } }) => {
-					if (payload.username === username) return; // Skip own events
+					if (payload.username === username) return;
 
 					switch (payload.type) {
 						case "message:add":
 							setMessages((prev) => [...prev, payload.message]);
+							// Clear partial text for this speaker when they commit
+							if (payload.message.type === "transcript") {
+								setPartialTexts((prev) => {
+									const next = { ...prev };
+									delete next[payload.message.username];
+									return next;
+								});
+							}
 							break;
 						case "messages:sync":
 							setMessages((prev) => {
-								// Merge: keep existing, add any new ones
 								const existingIds = new Set(prev.map((m) => m.id));
 								const newMessages = payload.messages.filter(
 									(m) => !existingIds.has(m.id),
 								);
 								return [...prev, ...newMessages];
 							});
+							break;
+						case "partial:update":
+							setPartialTexts((prev) =>
+								payload.text
+									? { ...prev, [payload.speaker]: payload.text }
+									: (() => {
+											const next = { ...prev };
+											delete next[payload.speaker];
+											return next;
+										})(),
+							);
 							break;
 					}
 				},
@@ -87,10 +108,36 @@ export function useRealtimeChat(roomId: string, username: string) {
 			const { message, error } = await sendMessage(roomId, username, content);
 			if (error || !message) return;
 
-			// Optimistic local update
+			const chatMsg: ChatMessage = { ...message, type: "chat" };
+
+			setMessages((prev) => [...prev, chatMsg]);
+
+			channelRef.current?.send({
+				type: "broadcast",
+				event: "chat-event",
+				payload: {
+					type: "message:add",
+					message: chatMsg,
+					username,
+				} satisfies ChatEvent & { username: string },
+			});
+		},
+		[roomId, username],
+	);
+
+	const addTranscript = useCallback(
+		async (entry: ChatMessage) => {
+			// Persist to DB
+			const { message, error } = await saveTranscript(
+				roomId,
+				entry.username,
+				entry.content,
+			);
+			if (error || !message) return;
+
+			// Use DB-generated message (with proper id)
 			setMessages((prev) => [...prev, message]);
 
-			// Broadcast to others
 			channelRef.current?.send({
 				type: "broadcast",
 				event: "chat-event",
@@ -104,5 +151,27 @@ export function useRealtimeChat(roomId: string, username: string) {
 		[roomId, username],
 	);
 
-	return { messages, send };
+	// Broadcast partial text (throttled) so all participants see live STT
+	const lastPartialSendRef = useRef(0);
+	const broadcastPartial = useCallback(
+		(text: string) => {
+			const now = Date.now();
+			if (now - lastPartialSendRef.current < 300) return;
+			lastPartialSendRef.current = now;
+
+			channelRef.current?.send({
+				type: "broadcast",
+				event: "chat-event",
+				payload: {
+					type: "partial:update",
+					text,
+					speaker: username,
+					username,
+				} satisfies ChatEvent & { username: string },
+			});
+		},
+		[username],
+	);
+
+	return { messages, partialTexts, send, addTranscript, broadcastPartial };
 }

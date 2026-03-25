@@ -10,6 +10,7 @@ export interface ChatMessage {
 	username: string;
 	content: string;
 	timestamp: number;
+	type: "chat" | "transcript";
 }
 
 export interface TranscriptEntry {

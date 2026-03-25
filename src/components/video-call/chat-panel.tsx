@@ -2,11 +2,9 @@
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { getSupabaseClient } from "@/lib/supabase";
-import { nanoid } from "nanoid";
+import { useRealtimeChat } from "@/hooks/use-realtime-chat";
 import { Send } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-import type { ChatMessage } from "./types";
 
 interface ChatPanelProps {
 	roomId: string;
@@ -14,29 +12,9 @@ interface ChatPanelProps {
 }
 
 export function ChatPanel({ roomId, username }: ChatPanelProps) {
-	const [messages, setMessages] = useState<ChatMessage[]>([]);
+	const { messages, send } = useRealtimeChat(roomId, username);
 	const [input, setInput] = useState("");
 	const scrollRef = useRef<HTMLDivElement>(null);
-	const channelRef = useRef<ReturnType<
-		ReturnType<typeof getSupabaseClient>["channel"]
-	> | null>(null);
-
-	useEffect(() => {
-		const supabase = getSupabaseClient();
-		const channel = supabase.channel(`chat:${roomId}`);
-
-		channel
-			.on("broadcast", { event: "message" }, ({ payload }) => {
-				setMessages((prev) => [...prev, payload as ChatMessage]);
-			})
-			.subscribe();
-
-		channelRef.current = channel;
-
-		return () => {
-			supabase.removeChannel(channel);
-		};
-	}, [roomId]);
 
 	useEffect(() => {
 		scrollRef.current?.scrollTo({
@@ -45,24 +23,9 @@ export function ChatPanel({ roomId, username }: ChatPanelProps) {
 		});
 	}, [messages]);
 
-	const sendMessage = () => {
-		if (!input.trim() || !channelRef.current) return;
-
-		const msg: ChatMessage = {
-			id: nanoid(),
-			username,
-			content: input.trim(),
-			timestamp: Date.now(),
-		};
-
-		channelRef.current.send({
-			type: "broadcast",
-			event: "message",
-			payload: msg,
-		});
-
-		// Add locally (broadcast doesn't echo back to sender)
-		setMessages((prev) => [...prev, msg]);
+	const handleSend = () => {
+		if (!input.trim()) return;
+		send(input);
 		setInput("");
 	};
 
@@ -102,7 +65,7 @@ export function ChatPanel({ roomId, username }: ChatPanelProps) {
 			<form
 				onSubmit={(e) => {
 					e.preventDefault();
-					sendMessage();
+					handleSend();
 				}}
 				className="border-t border-border p-3 flex gap-2"
 			>

@@ -1,11 +1,12 @@
 "use client";
 
-import { useParticipantIds } from "@daily-co/daily-react";
+import { useRealtimeChat } from "@/hooks/use-realtime-chat";
+import { useTranscription } from "@/hooks/use-transcription";
+import { useLocalParticipant, useParticipantIds } from "@daily-co/daily-react";
 import { useState } from "react";
 import { CallControls } from "./call-controls";
 import { ChatPanel } from "./chat-panel";
 import { ParticipantTile } from "./participant-tile";
-import { TranscriptPanel } from "./transcript-panel";
 
 interface CallUIProps {
 	username: string;
@@ -14,9 +15,25 @@ interface CallUIProps {
 
 export function CallUI({ username, roomId }: CallUIProps) {
 	const participantIds = useParticipantIds();
-	const [activePanel, setActivePanel] = useState<
-		"chat" | "transcript" | null
-	>("chat");
+	const localParticipant = useLocalParticipant();
+	const isMuted = !localParticipant?.audio;
+	const [showPanel, setShowPanel] = useState(true);
+
+	const { messages, partialTexts, send, addTranscript, broadcastPartial } =
+		useRealtimeChat(roomId, username);
+
+	const { partialText, isActive, isListening, start, stop } = useTranscription({
+		username,
+		muted: isMuted,
+		onTranscript: addTranscript,
+		onPartial: broadcastPartial,
+	});
+
+	// Merge local partial with remote partials
+	const allPartials: Record<string, string> = { ...partialTexts };
+	if (partialText) {
+		allPartials[username] = partialText;
+	}
 
 	return (
 		<div className="flex h-full w-full flex-col">
@@ -32,19 +49,24 @@ export function CallUI({ username, roomId }: CallUIProps) {
 					</div>
 				</div>
 
-				{/* Side Panel */}
-				{activePanel && (
+				{/* Side Panel — unified chat + transcription */}
+				{showPanel && (
 					<div className="w-80 border-l border-border flex flex-col">
-						{activePanel === "chat" ? (
-							<ChatPanel roomId={roomId} username={username} />
-						) : (
-							<TranscriptPanel />
-						)}
+						<ChatPanel
+							messages={messages}
+							onSend={send}
+							username={username}
+							partialTexts={allPartials}
+							transcription={{ isActive, isListening, start, stop }}
+						/>
 					</div>
 				)}
 			</div>
 
-			<CallControls activePanel={activePanel} onTogglePanel={setActivePanel} />
+			<CallControls
+				showPanel={showPanel}
+				onTogglePanel={() => setShowPanel(!showPanel)}
+			/>
 		</div>
 	);
 }

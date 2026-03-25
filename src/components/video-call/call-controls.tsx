@@ -3,7 +3,6 @@
 import { Button } from "@/components/ui/button";
 import { useDaily, useLocalParticipant } from "@daily-co/daily-react";
 import {
-	Captions,
 	MessageSquare,
 	Mic,
 	MicOff,
@@ -13,14 +12,11 @@ import {
 } from "lucide-react";
 
 interface CallControlsProps {
-	activePanel: "chat" | "transcript" | null;
-	onTogglePanel: (panel: "chat" | "transcript" | null) => void;
+	showPanel: boolean;
+	onTogglePanel: () => void;
 }
 
-export function CallControls({
-	activePanel,
-	onTogglePanel,
-}: CallControlsProps) {
+export function CallControls({ showPanel, onTogglePanel }: CallControlsProps) {
 	const daily = useDaily();
 	const localParticipant = useLocalParticipant();
 	const isMicOn = localParticipant?.audio;
@@ -77,25 +73,13 @@ export function CallControls({
 			<div className="mx-2 h-8 w-px bg-border" />
 
 			<Button
-				variant={activePanel === "chat" ? "default" : "secondary"}
+				variant={showPanel ? "default" : "secondary"}
 				size="icon"
 				className="rounded-full h-12 w-12"
-				onClick={() => onTogglePanel(activePanel === "chat" ? null : "chat")}
-				title="Chat"
+				onClick={onTogglePanel}
+				title="Toggle chat"
 			>
 				<MessageSquare className="h-5 w-5" />
-			</Button>
-
-			<Button
-				variant={activePanel === "transcript" ? "default" : "secondary"}
-				size="icon"
-				className="rounded-full h-12 w-12"
-				onClick={() =>
-					onTogglePanel(activePanel === "transcript" ? null : "transcript")
-				}
-				title="Transcription"
-			>
-				<Captions className="h-5 w-5" />
 			</Button>
 		</div>
 	);

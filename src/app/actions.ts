@@ -31,6 +31,7 @@ export async function sendMessage(
 		roomId: room.id,
 		username,
 		content: trimmed,
+		type: "chat",
 		createdAt: now,
 	});
 
@@ -40,6 +41,44 @@ export async function sendMessage(
 			username,
 			content: trimmed,
 			timestamp: now.getTime(),
+			type: "chat" as const,
+		},
+	};
+}
+
+export async function saveTranscript(
+	roomDailyName: string,
+	username: string,
+	content: string,
+) {
+	const trimmed = content.trim();
+	if (!trimmed) return { error: "Empty transcript" };
+
+	const room = await db.query.rooms.findFirst({
+		where: eq(rooms.dailyRoomName, roomDailyName),
+	});
+
+	if (!room) return { error: "Room not found" };
+
+	const id = nanoid();
+	const now = new Date();
+
+	await db.insert(messages).values({
+		id,
+		roomId: room.id,
+		username,
+		content: trimmed,
+		type: "transcript",
+		createdAt: now,
+	});
+
+	return {
+		message: {
+			id,
+			username,
+			content: trimmed,
+			timestamp: now.getTime(),
+			type: "transcript" as const,
 		},
 	};
 }
@@ -62,6 +101,7 @@ export async function getMessages(roomDailyName: string) {
 			username: r.username,
 			content: r.content,
 			timestamp: r.createdAt.getTime(),
+			type: r.type as "chat" | "transcript",
 		})),
 	};
 }

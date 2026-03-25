@@ -2,7 +2,12 @@
 
 import { useRealtimeChat } from "@/hooks/use-realtime-chat";
 import { useTranscription } from "@/hooks/use-transcription";
-import { useLocalParticipant, useParticipantIds } from "@daily-co/daily-react";
+import {
+	DailyAudio,
+	useLocalSessionId,
+	useParticipantIds,
+	useParticipantProperty,
+} from "@daily-co/daily-react";
 import { useState } from "react";
 import { CallControls } from "./call-controls";
 import { ChatPanel } from "./chat-panel";
@@ -15,8 +20,9 @@ interface CallUIProps {
 
 export function CallUI({ username, roomId }: CallUIProps) {
 	const participantIds = useParticipantIds();
-	const localParticipant = useLocalParticipant();
-	const isMuted = !localParticipant?.audio;
+	const localSessionId = useLocalSessionId();
+	const audioState = useParticipantProperty(localSessionId, "tracks.audio.state");
+	const isMuted = audioState !== "playable" && audioState !== "sendable";
 	const [showPanel, setShowPanel] = useState(true);
 
 	const { messages, partialTexts, send, addTranscript, broadcastPartial } =
@@ -37,6 +43,7 @@ export function CallUI({ username, roomId }: CallUIProps) {
 
 	return (
 		<div className="flex h-full w-full flex-col">
+			<DailyAudio />
 			<div className="flex flex-1 overflow-hidden">
 				{/* Video Grid */}
 				<div className="flex-1 p-3">

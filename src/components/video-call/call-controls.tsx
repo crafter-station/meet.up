@@ -1,7 +1,11 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-import { useDaily, useLocalParticipant } from "@daily-co/daily-react";
+import {
+	useDaily,
+	useLocalSessionId,
+	useParticipantProperty,
+} from "@daily-co/daily-react";
 import {
 	MessageSquare,
 	Mic,
@@ -18,9 +22,11 @@ interface CallControlsProps {
 
 export function CallControls({ showPanel, onTogglePanel }: CallControlsProps) {
 	const daily = useDaily();
-	const localParticipant = useLocalParticipant();
-	const isMicOn = localParticipant?.audio;
-	const isCamOn = localParticipant?.video;
+	const localSessionId = useLocalSessionId();
+	const audioState = useParticipantProperty(localSessionId, "tracks.audio.state");
+	const videoState = useParticipantProperty(localSessionId, "tracks.video.state");
+	const isMicOn = audioState === "playable" || audioState === "sendable";
+	const isCamOn = videoState === "playable" || videoState === "sendable";
 
 	const toggleMic = () => daily?.setLocalAudio(!isMicOn);
 	const toggleCam = () => daily?.setLocalVideo(!isCamOn);

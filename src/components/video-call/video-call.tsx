@@ -2,13 +2,12 @@
 
 import DailyIframe from "@daily-co/daily-js";
 import { DailyProvider } from "@daily-co/daily-react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { CallUI } from "./call-ui";
 import type { VideoCallProps } from "./types";
 
-// Module-level singleton to handle React Strict Mode double-mounting
-let callObjectSingleton: ReturnType<typeof DailyIframe.createCallObject> | null =
-	null;
+// Track the pending destroy so the next mount waits for it
+let destroyPromise: Promise<void> = Promise.resolve();
 
 export function VideoCall({
 	roomUrl,
@@ -16,30 +15,47 @@ export function VideoCall({
 	username,
 	roomId,
 }: VideoCallProps) {
+	const [callObject, setCallObject] = useState<ReturnType<
+		typeof DailyIframe.createCallObject
+	> | null>(null);
 	const [ready, setReady] = useState(false);
-	const coRef = useRef(callObjectSingleton);
 
 	useEffect(() => {
-		if (!coRef.current) {
-			coRef.current = DailyIframe.createCallObject({
+		let cancelled = false;
+		let co: ReturnType<typeof DailyIframe.createCallObject> | null = null;
+
+		// Wait for any previous instance to fully destroy before creating a new one
+		const init = destroyPromise.then(() => {
+			if (cancelled) return;
+
+			co = DailyIframe.createCallObject({
 				audioSource: true,
 				videoSource: true,
 			});
-			callObjectSingleton = coRef.current;
-		}
 
-		const co = coRef.current;
-		co.join({ url: roomUrl, token }).then(() => setReady(true));
+			setCallObject(co);
+
+			return co.join({ url: roomUrl, token }).then(() => {
+				if (!cancelled) setReady(true);
+			});
+		});
 
 		return () => {
-			co.leave();
-			co.destroy();
-			coRef.current = null;
-			callObjectSingleton = null;
+			cancelled = true;
+			destroyPromise = init.then(() => {
+				if (co) {
+					return co
+						.leave()
+						.then(() => co!.destroy())
+						.catch(() => {});
+				}
+			});
+			setCallObject(null);
+			setReady(false);
 		};
 	}, [roomUrl, token]);
 
-	if (!ready || !coRef.current) {
+	if (!ready || !callObject) {
 		return (
 			<div className="flex h-full w-full items-center justify-center">
 				<p className="text-muted-foreground animate-pulse">Joining call...</p>
@@ -48,7 +64,7 @@ export function VideoCall({
 	}
 
 	return (
-		<DailyProvider callObject={coRef.current}>
+		<DailyProvider callObject={callObject}>
 			<CallUI username={username} roomId={roomId} />
 		</DailyProvider>
 	);

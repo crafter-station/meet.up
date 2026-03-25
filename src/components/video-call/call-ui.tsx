@@ -44,7 +44,7 @@ export function CallUI({ username, roomId }: CallUIProps) {
 	return (
 		<div className="flex h-full w-full flex-col">
 			<DailyAudio />
-			<div className="flex flex-1 overflow-hidden">
+			<div className="relative flex flex-1 overflow-hidden">
 				{/* Video Grid */}
 				<div className="flex-1 p-3">
 					<div
@@ -56,9 +56,9 @@ export function CallUI({ username, roomId }: CallUIProps) {
 					</div>
 				</div>
 
-				{/* Side Panel — unified chat + transcription */}
+				{/* Side Panel — overlay on mobile, sidebar on desktop */}
 				{showPanel && (
-					<div className="w-80 border-l border-border flex flex-col">
+					<div className="absolute inset-0 z-10 flex flex-col bg-background md:static md:inset-auto md:z-auto md:w-80 md:border-l md:border-border">
 						<ChatPanel
 							messages={messages}
 							onSend={send}
@@ -80,7 +80,7 @@ export function CallUI({ username, roomId }: CallUIProps) {
 
 function getGridClass(count: number): string {
 	if (count <= 1) return "grid-cols-1";
-	if (count <= 4) return "grid-cols-2";
-	if (count <= 9) return "grid-cols-3";
-	return "grid-cols-4";
+	if (count <= 4) return "grid-cols-1 md:grid-cols-2";
+	if (count <= 9) return "grid-cols-2 md:grid-cols-3";
+	return "grid-cols-2 md:grid-cols-4";
 }

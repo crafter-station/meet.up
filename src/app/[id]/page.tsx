@@ -44,7 +44,7 @@ export default function RoomPage() {
 
 	if (callData) {
 		return (
-			<div className="flex flex-1">
+			<div className="flex h-dvh">
 				<VideoCall
 					roomUrl={callData.roomUrl}
 					token={callData.token}

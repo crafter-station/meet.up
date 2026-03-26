@@ -2,7 +2,7 @@ import { auth } from "@clerk/nextjs/server";
 import { db } from "@/db";
 import { participants, rooms } from "@/db/schema";
 import { createMeetingToken, getDailyRoom } from "@/lib/daily";
-import { verifyOwner } from "@/lib/owner";
+import { checkIsOwner } from "@/lib/owner";
 import { redis } from "@/lib/redis";
 import { eq } from "drizzle-orm";
 import { type NextRequest, NextResponse } from "next/server";
@@ -31,11 +31,7 @@ export async function POST(
 		);
 	}
 
-	const isOwner =
-		(ownerSecret && verifyOwner(ownerSecret, room.ownerSecretHash)) ||
-		(clerkUserId &&
-			room.ownerClerkUserId &&
-			clerkUserId === room.ownerClerkUserId);
+	const isOwner = checkIsOwner(ownerSecret, clerkUserId, room);
 
 	if (!room.autoAccept && !isOwner) {
 		const grantKey = `admission-grant:${room.id}:${username}`;

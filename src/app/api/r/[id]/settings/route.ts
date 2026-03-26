@@ -1,7 +1,7 @@
 import { auth } from "@clerk/nextjs/server";
 import { db } from "@/db";
 import { rooms } from "@/db/schema";
-import { verifyOwner } from "@/lib/owner";
+import { checkIsOwner } from "@/lib/owner";
 import { eq } from "drizzle-orm";
 import { type NextRequest, NextResponse } from "next/server";
 
@@ -22,11 +22,7 @@ export async function PATCH(
 		return NextResponse.json({ error: "Room not found" }, { status: 404 });
 	}
 
-	const isOwner =
-		(ownerSecret && verifyOwner(ownerSecret, room.ownerSecretHash)) ||
-		(clerkUserId &&
-			room.ownerClerkUserId &&
-			clerkUserId === room.ownerClerkUserId);
+	const isOwner = checkIsOwner(ownerSecret, clerkUserId, room);
 
 	if (!isOwner) {
 		return NextResponse.json({ error: "Unauthorized" }, { status: 403 });

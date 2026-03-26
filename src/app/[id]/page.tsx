@@ -5,10 +5,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { MediaPreview, type MediaSettings } from "@/components/media-preview";
 import { VideoCall } from "@/components/video-call/video-call";
-import { Mail } from "lucide-react";
+import { useAdmission } from "@/hooks/use-admission";
+import { Loader2, Mail } from "lucide-react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 function getDisplayName(user: ReturnType<typeof useUser>["user"]): string {
 	if (!user) return "";
@@ -31,12 +32,20 @@ export default function RoomPage() {
 	const [joining, setJoining] = useState(false);
 	const [ended, setEnded] = useState(false);
 	const [error, setError] = useState("");
+	const [waitingForAdmission, setWaitingForAdmission] = useState(false);
+	const [rejected, setRejected] = useState(false);
 	const [mediaSettings, setMediaSettings] = useState<MediaSettings>({
 		camOn: true,
 		micOn: true,
 		selectedCamId: "",
 		selectedMicId: "",
 	});
+
+	const ownerSecret =
+		typeof window !== "undefined"
+			? sessionStorage.getItem(`ownerSecret:${id}`)
+			: null;
+	const isOwner = !!ownerSecret;
 
 	// Auto-fill username from Clerk user once loaded
 	useEffect(() => {
@@ -48,21 +57,32 @@ export default function RoomPage() {
 
 	const effectiveUsername = username.trim();
 
-	const joinRoom = async () => {
+	const joinRoom = useCallback(async () => {
 		if (!effectiveUsername) return;
 
 		setJoining(true);
 		setError("");
 
 		try {
+			const headers: Record<string, string> = {
+				"Content-Type": "application/json",
+			};
+			if (ownerSecret) headers["X-Owner-Secret"] = ownerSecret;
+
 			const res = await fetch(`/api/r/${id}/join`, {
 				method: "POST",
-				headers: { "Content-Type": "application/json" },
+				headers,
 				body: JSON.stringify({ username: effectiveUsername }),
 			});
 
 			if (res.status === 410) {
 				setEnded(true);
+				return;
+			}
+
+			if (res.status === 202) {
+				setWaitingForAdmission(true);
+				setJoining(false);
 				return;
 			}
 
@@ -75,12 +95,49 @@ export default function RoomPage() {
 		} finally {
 			setJoining(false);
 		}
-	};
+	}, [effectiveUsername, id, ownerSecret]);
+
+	const { requestAdmission, cancelRequest } = useAdmission({
+		roomId: id,
+		username: effectiveUsername,
+		isOwner: false,
+		onAccepted: () => {
+			setWaitingForAdmission(false);
+			joinRoom();
+		},
+		onRejected: () => {
+			setRejected(true);
+			setWaitingForAdmission(false);
+		},
+	});
+
+	// When entering waiting state, send the admission request
+	useEffect(() => {
+		if (waitingForAdmission) {
+			requestAdmission();
+		}
+	}, [waitingForAdmission, requestAdmission]);
 
 	const handleJoin = (e: React.FormEvent) => {
 		e.preventDefault();
 		joinRoom();
 	};
+
+	if (rejected) {
+		return (
+			<div className="flex flex-1 flex-col items-center justify-center gap-4 px-4">
+				<div className="text-center space-y-2">
+					<h1 className="text-2xl font-bold tracking-tight">Request denied</h1>
+					<p className="text-sm text-muted-foreground">
+						The host did not admit you to this meeting.
+					</p>
+				</div>
+				<Link href="/">
+					<Button>Back to home</Button>
+				</Link>
+			</div>
+		);
+	}
 
 	if (ended) {
 		return (
@@ -103,6 +160,31 @@ export default function RoomPage() {
 		);
 	}
 
+	if (waitingForAdmission) {
+		return (
+			<div className="flex flex-1 flex-col items-center justify-center gap-4 px-4">
+				<div className="text-center space-y-2">
+					<Loader2 className="h-8 w-8 animate-spin mx-auto text-primary" />
+					<h1 className="text-2xl font-bold tracking-tight">
+						Waiting to be admitted
+					</h1>
+					<p className="text-sm text-muted-foreground">
+						The host will let you in soon...
+					</p>
+				</div>
+				<Button
+					variant="secondary"
+					onClick={() => {
+						cancelRequest();
+						setWaitingForAdmission(false);
+					}}
+				>
+					Cancel
+				</Button>
+			</div>
+		);
+	}
+
 	if (callData) {
 		return (
 			<div className="flex h-dvh">
@@ -112,6 +194,8 @@ export default function RoomPage() {
 					username={effectiveUsername}
 					roomId={id}
 					mediaSettings={mediaSettings}
+					isOwner={isOwner}
+					ownerSecret={ownerSecret}
 				/>
 			</div>
 		);

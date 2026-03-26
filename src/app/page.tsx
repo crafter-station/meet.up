@@ -18,7 +18,8 @@ export default function Home() {
 		setCreating(true);
 		try {
 			const res = await fetch("/api/r", { method: "POST" });
-			const { id } = await res.json();
+			const { id, ownerSecret } = await res.json();
+			sessionStorage.setItem(`ownerSecret:${id}`, ownerSecret);
 			router.push(`/${id}`);
 		} finally {
 			setCreating(false);

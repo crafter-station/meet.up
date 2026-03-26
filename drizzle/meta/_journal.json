@@ -22,6 +22,13 @@
       "when": 1774496572708,
       "tag": "0002_messy_nicolaos",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1774537761145,
+      "tag": "0003_previous_the_stranger",
+      "breakpoints": true
     }
   ]
 }

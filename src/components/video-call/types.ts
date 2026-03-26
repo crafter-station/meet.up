@@ -11,6 +11,8 @@ export interface VideoCallProps {
 	username: string;
 	roomId: string;
 	mediaSettings?: MediaSettings;
+	isOwner: boolean;
+	ownerSecret: string | null;
 }
 
 export interface ChatMessage {

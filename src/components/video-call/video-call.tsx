@@ -15,6 +15,8 @@ export function VideoCall({
 	username,
 	roomId,
 	mediaSettings,
+	isOwner,
+	ownerSecret,
 }: VideoCallProps) {
 	const [callObject, setCallObject] = useState<ReturnType<
 		typeof DailyIframe.createCallObject
@@ -72,7 +74,12 @@ export function VideoCall({
 
 	return (
 		<DailyProvider callObject={callObject}>
-			<CallUI username={username} roomId={roomId} />
+			<CallUI
+				username={username}
+				roomId={roomId}
+				isOwner={isOwner}
+				ownerSecret={ownerSecret}
+			/>
 		</DailyProvider>
 	);
 }

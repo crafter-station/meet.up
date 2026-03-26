@@ -1,5 +1,6 @@
 "use client";
 
+import { useAdmission } from "@/hooks/use-admission";
 import { useRealtimeChat } from "@/hooks/use-realtime-chat";
 import { useTranscription } from "@/hooks/use-transcription";
 import {
@@ -16,9 +17,11 @@ import { ParticipantTile } from "./participant-tile";
 interface CallUIProps {
 	username: string;
 	roomId: string;
+	isOwner: boolean;
+	ownerSecret: string | null;
 }
 
-export function CallUI({ username, roomId }: CallUIProps) {
+export function CallUI({ username, roomId, isOwner, ownerSecret }: CallUIProps) {
 	const participantIds = useParticipantIds();
 	const localSessionId = useLocalSessionId();
 	const audioState = useParticipantProperty(localSessionId, "tracks.audio.state");
@@ -43,6 +46,12 @@ export function CallUI({ username, roomId }: CallUIProps) {
 		muted: isMuted,
 		onTranscript: addTranscript,
 		onPartial: broadcastPartial,
+	});
+
+	const { pendingRequests, acceptUser, rejectUser } = useAdmission({
+		roomId,
+		username,
+		isOwner,
 	});
 
 	// Merge local partial with remote partials
@@ -85,6 +94,11 @@ export function CallUI({ username, roomId }: CallUIProps) {
 				onTogglePanel={() => setShowPanel(!showPanel)}
 				roomId={roomId}
 				onMeetingEnded={broadcastMeetingEnded}
+				isOwner={isOwner}
+				ownerSecret={ownerSecret}
+				pendingRequests={pendingRequests}
+				onAcceptUser={acceptUser}
+				onRejectUser={rejectUser}
 			/>
 		</div>
 	);

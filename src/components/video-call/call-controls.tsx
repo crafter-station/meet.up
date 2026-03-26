@@ -1,21 +1,19 @@
 "use client";
 
 import { endMeeting } from "@/app/actions";
+import { CamToggle, MicToggle } from "@/components/media-toggles";
 import { Button } from "@/components/ui/button";
 import {
 	useDaily,
+	useDevices,
 	useLocalSessionId,
 	useParticipantProperty,
 } from "@daily-co/daily-react";
 import {
 	Loader2,
 	MessageSquare,
-	Mic,
-	MicOff,
 	PhoneOff,
 	Square,
-	Video,
-	VideoOff,
 } from "lucide-react";
 import { useState } from "react";
 
@@ -40,8 +38,19 @@ export function CallControls({
 	const isCamOn = videoState === "playable" || videoState === "sendable";
 	const [ending, setEnding] = useState(false);
 
+	const { cameras, microphones, currentCam, currentMic, setCamera, setMicrophone } = useDevices();
+
 	const toggleMic = () => daily?.setLocalAudio(!isMicOn);
 	const toggleCam = () => daily?.setLocalVideo(!isCamOn);
+
+	const micDevices = microphones.map((m) => ({
+		deviceId: m.device.deviceId,
+		label: m.device.label || `Microphone ${m.device.deviceId.slice(0, 4)}`,
+	}));
+	const camDevices = cameras.map((c) => ({
+		deviceId: c.device.deviceId,
+		label: c.device.label || `Camera ${c.device.deviceId.slice(0, 4)}`,
+	}));
 
 	const leave = () => {
 		daily?.leave();
@@ -66,33 +75,21 @@ export function CallControls({
 
 	return (
 		<div className="flex items-center justify-center gap-2 border-t border-border px-4 py-3">
-			<Button
-				variant={isMicOn ? "secondary" : "destructive"}
-				size="icon"
-				className="rounded-full h-12 w-12"
-				onClick={toggleMic}
-				title={isMicOn ? "Mute" : "Unmute"}
-			>
-				{isMicOn ? (
-					<Mic className="h-5 w-5" />
-				) : (
-					<MicOff className="h-5 w-5" />
-				)}
-			</Button>
+			<MicToggle
+				isOn={isMicOn}
+				onToggle={toggleMic}
+				devices={micDevices}
+				selectedDeviceId={currentMic?.device.deviceId ?? ""}
+				onSelectDevice={setMicrophone}
+			/>
 
-			<Button
-				variant={isCamOn ? "secondary" : "destructive"}
-				size="icon"
-				className="rounded-full h-12 w-12"
-				onClick={toggleCam}
-				title={isCamOn ? "Turn off camera" : "Turn on camera"}
-			>
-				{isCamOn ? (
-					<Video className="h-5 w-5" />
-				) : (
-					<VideoOff className="h-5 w-5" />
-				)}
-			</Button>
+			<CamToggle
+				isOn={isCamOn}
+				onToggle={toggleCam}
+				devices={camDevices}
+				selectedDeviceId={currentCam?.device.deviceId ?? ""}
+				onSelectDevice={setCamera}
+			/>
 
 			<Button
 				variant="secondary"

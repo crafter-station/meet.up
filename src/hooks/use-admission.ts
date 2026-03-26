@@ -36,6 +36,7 @@ export function useAdmission({
 	const channelRef = useRef<ReturnType<
 		ReturnType<typeof getSupabaseClient>["channel"]
 	> | null>(null);
+	const pendingSendRef = useRef<AdmissionEvent | null>(null);
 	const onAcceptedRef = useRef(onAccepted);
 	const onRejectedRef = useRef(onRejected);
 	onAcceptedRef.current = onAccepted;
@@ -100,6 +101,15 @@ export function useAdmission({
 			)
 			.subscribe(() => {
 				channelRef.current = channel;
+				// Flush any request that was queued before the channel was ready
+				if (pendingSendRef.current) {
+					channel.send({
+						type: "broadcast",
+						event: "admission-event",
+						payload: pendingSendRef.current,
+					});
+					pendingSendRef.current = null;
+				}
 			});
 
 		return () => {
@@ -110,15 +120,20 @@ export function useAdmission({
 
 	const requestAdmission = useCallback(() => {
 		setWaitingStatus("waiting");
-		channelRef.current?.send({
-			type: "broadcast",
-			event: "admission-event",
-			payload: {
-				type: "admission:request",
-				username,
-				timestamp: Date.now(),
-			} satisfies AdmissionEvent,
-		});
+		const payload: AdmissionEvent = {
+			type: "admission:request",
+			username,
+			timestamp: Date.now(),
+		};
+		if (channelRef.current) {
+			channelRef.current.send({
+				type: "broadcast",
+				event: "admission-event",
+				payload,
+			});
+		} else {
+			pendingSendRef.current = payload;
+		}
 	}, [username]);
 
 	const acceptUser = useCallback(

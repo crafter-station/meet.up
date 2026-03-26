@@ -14,6 +14,7 @@ export function VideoCall({
 	token,
 	username,
 	roomId,
+	mediaSettings,
 }: VideoCallProps) {
 	const [callObject, setCallObject] = useState<ReturnType<
 		typeof DailyIframe.createCallObject
@@ -29,8 +30,12 @@ export function VideoCall({
 			if (cancelled) return;
 
 			co = DailyIframe.createCallObject({
-				audioSource: true,
-				videoSource: true,
+				audioSource: mediaSettings?.micOn !== false
+					? (mediaSettings?.selectedMicId || true)
+					: false,
+				videoSource: mediaSettings?.camOn !== false
+					? (mediaSettings?.selectedCamId || true)
+					: false,
 			});
 
 			setCallObject(co);

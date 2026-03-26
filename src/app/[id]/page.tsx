@@ -3,8 +3,9 @@
 import { useUser } from "@clerk/nextjs";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { MediaPreview, type MediaSettings } from "@/components/media-preview";
 import { VideoCall } from "@/components/video-call/video-call";
-import { Mail, Video } from "lucide-react";
+import { Mail } from "lucide-react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -30,6 +31,12 @@ export default function RoomPage() {
 	const [joining, setJoining] = useState(false);
 	const [ended, setEnded] = useState(false);
 	const [error, setError] = useState("");
+	const [mediaSettings, setMediaSettings] = useState<MediaSettings>({
+		camOn: true,
+		micOn: true,
+		selectedCamId: "",
+		selectedMicId: "",
+	});
 
 	// Auto-fill username from Clerk user once loaded
 	useEffect(() => {
@@ -39,7 +46,6 @@ export default function RoomPage() {
 		}
 	}, [isLoaded, isSignedIn, user]);
 
-	// Auto-join when signed in and name is resolved
 	const effectiveUsername = username.trim();
 
 	const joinRoom = async () => {
@@ -105,22 +111,22 @@ export default function RoomPage() {
 					token={callData.token}
 					username={effectiveUsername}
 					roomId={id}
+					mediaSettings={mediaSettings}
 				/>
 			</div>
 		);
 	}
 
 	return (
-		<div className="flex flex-1 flex-col items-center justify-center gap-6 px-4">
-			<div className="text-center space-y-2">
-				<div className="inline-flex items-center justify-center h-14 w-14 rounded-2xl bg-primary mb-2">
-					<Video className="h-7 w-7 text-primary-foreground" />
-				</div>
+		<div className="flex flex-1 flex-col items-center justify-center gap-6 px-4 py-8">
+			<div className="text-center space-y-1">
 				<h1 className="text-2xl font-bold tracking-tight">Join meeting</h1>
 				<p className="text-sm text-muted-foreground font-mono">{id}</p>
 			</div>
 
-			<form onSubmit={handleJoin} className="w-full max-w-xs space-y-3">
+			<MediaPreview onSettingsChange={setMediaSettings} />
+
+			<form onSubmit={handleJoin} className="w-full max-w-md space-y-3">
 				{isSignedIn ? (
 					<p className="text-center text-sm text-foreground">
 						Joining as <span className="font-medium">{effectiveUsername}</span>

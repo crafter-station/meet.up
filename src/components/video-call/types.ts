@@ -1,8 +1,16 @@
+export interface MediaSettings {
+	camOn: boolean;
+	micOn: boolean;
+	selectedCamId: string;
+	selectedMicId: string;
+}
+
 export interface VideoCallProps {
 	roomUrl: string;
 	token: string;
 	username: string;
 	roomId: string;
+	mediaSettings?: MediaSettings;
 }
 
 export interface ChatMessage {

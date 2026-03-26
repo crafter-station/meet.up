@@ -9,7 +9,7 @@ import {
 	useParticipantIds,
 	useParticipantProperty,
 } from "@daily-co/daily-react";
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { CallControls } from "./call-controls";
 import { ChatPanel } from "./chat-panel";
 import { ParticipantTile } from "./participant-tile";
@@ -36,6 +36,32 @@ export function CallUI({
 	const audioState = useParticipantProperty(localSessionId, "tracks.audio.state");
 	const isMuted = audioState !== "playable" && audioState !== "sendable";
 	const [showPanel, setShowPanel] = useState(true);
+
+	// Keep screen awake during the call
+	useEffect(() => {
+		let wakeLock: WakeLockSentinel | null = null;
+
+		const acquire = async () => {
+			try {
+				wakeLock = await navigator.wakeLock.request("screen");
+			} catch {
+				console.warn("Wake Lock API not supported or permission denied");
+			}
+		};
+
+		acquire();
+
+		// Re-acquire when tab becomes visible again (browser releases it on hide)
+		const onVisibilityChange = () => {
+			if (document.visibilityState === "visible") acquire();
+		};
+		document.addEventListener("visibilitychange", onVisibilityChange);
+
+		return () => {
+			wakeLock?.release();
+			document.removeEventListener("visibilitychange", onVisibilityChange);
+		};
+	}, []);
 
 	const onMeetingEnded = useCallback(() => {
 		window.location.href = `/summary/${roomId}`;

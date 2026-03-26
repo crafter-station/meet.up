@@ -27,7 +27,7 @@ import {
 	Square,
 	UserCheck,
 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 interface CallControlsProps {
 	showPanel: boolean;
@@ -107,7 +107,9 @@ export function CallControls({
 			const res = await fetch(`/api/r/${roomId}/leave`, {
 				method: "POST",
 				headers,
-				body: JSON.stringify({ username: daily?.participants()?.local?.user_name }),
+				body: JSON.stringify({
+					username: daily?.participants()?.local?.user_name,
+				}),
 			});
 			const data = await res.json();
 
@@ -151,6 +153,40 @@ export function CallControls({
 		}
 	};
 
+	const leaveButton = (
+		<Button
+			variant="secondary"
+			size="icon"
+			className="rounded-full h-12 w-12"
+			onClick={leave}
+			disabled={leaving}
+			title="Leave call"
+		>
+			{leaving ? (
+				<Loader2 className="h-5 w-5 animate-spin" />
+			) : (
+				<PhoneOff className="h-5 w-5" />
+			)}
+		</Button>
+	);
+
+	const endButton = isOwner ? (
+		<Button
+			variant="destructive"
+			size="icon"
+			className="rounded-full h-12 w-12"
+			onClick={handleEndMeeting}
+			disabled={ending}
+			title="End meeting for everyone"
+		>
+			{ending ? (
+				<Loader2 className="h-5 w-5 animate-spin" />
+			) : (
+				<Square className="h-4 w-4 fill-current" />
+			)}
+		</Button>
+	) : null;
+
 	return (
 		<div className="flex items-center justify-center gap-2 border-t border-border px-4 py-3">
 			<MicToggle
@@ -169,36 +205,56 @@ export function CallControls({
 				onSelectDevice={setCamera}
 			/>
 
-			<Button
-				variant="secondary"
-				size="icon"
-				className="rounded-full h-12 w-12"
-				onClick={leave}
-				disabled={leaving}
-				title="Leave call"
-			>
-				{leaving ? (
-					<Loader2 className="h-5 w-5 animate-spin" />
-				) : (
-					<PhoneOff className="h-5 w-5" />
-				)}
-			</Button>
-
-			{isOwner && (
-				<Button
-					variant="destructive"
-					size="icon"
-					className="rounded-full h-12 w-12"
-					onClick={handleEndMeeting}
-					disabled={ending}
-					title="End meeting for everyone"
-				>
-					{ending ? (
-						<Loader2 className="h-5 w-5 animate-spin" />
-					) : (
-						<Square className="h-4 w-4 fill-current" />
-					)}
-				</Button>
+			{/* Call controls — desktop: inline, mobile: grouped for owner */}
+			{isOwner ? (
+				<>
+					<div className="hidden md:flex gap-2">
+						{leaveButton}
+						{endButton}
+					</div>
+					<FloatingMenu
+						className="md:hidden"
+						trigger={
+							<Button
+								variant="secondary"
+								size="icon"
+								className="rounded-full h-12 w-12"
+								title="Call options"
+							>
+								<PhoneOff className="h-5 w-5" />
+							</Button>
+						}
+					>
+						<Button
+							variant="secondary"
+							className="gap-2"
+							onClick={leave}
+							disabled={leaving}
+						>
+							{leaving ? (
+								<Loader2 className="h-4 w-4 animate-spin" />
+							) : (
+								<PhoneOff className="h-4 w-4" />
+							)}
+							Leave
+						</Button>
+						<Button
+							variant="destructive"
+							className="gap-2"
+							onClick={handleEndMeeting}
+							disabled={ending}
+						>
+							{ending ? (
+								<Loader2 className="h-4 w-4 animate-spin" />
+							) : (
+								<Square className="h-3.5 w-3.5 fill-current" />
+							)}
+							End
+						</Button>
+					</FloatingMenu>
+				</>
+			) : (
+				leaveButton
 			)}
 
 			<div className="mx-2 h-8 w-px bg-border" />
@@ -213,20 +269,90 @@ export function CallControls({
 				<MessageSquare className="h-5 w-5" />
 			</Button>
 
+			{/* Owner admin controls — desktop: inline, mobile: grouped */}
 			{isOwner && (
 				<>
-					<RequestsDialog
-						pendingRequests={pendingRequests}
-						ownerSecret={ownerSecret!}
-						onAccept={onAcceptUser}
-						onReject={onRejectUser}
-					/>
-					<SettingsDialog roomId={roomId} ownerSecret={ownerSecret!} />
+					<div className="hidden md:flex gap-2">
+						<RequestsDialog
+							pendingRequests={pendingRequests}
+							ownerSecret={ownerSecret!}
+							onAccept={onAcceptUser}
+							onReject={onRejectUser}
+						/>
+						<SettingsDialog roomId={roomId} ownerSecret={ownerSecret!} />
+					</div>
+					<FloatingMenu
+						className="md:hidden"
+						trigger={
+							<Button
+								variant="secondary"
+								size="icon"
+								className="rounded-full h-12 w-12 relative"
+								title="Room admin"
+							>
+								<Settings className="h-5 w-5" />
+								{pendingRequests.length > 0 && (
+									<span className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-destructive text-destructive-foreground text-xs flex items-center justify-center">
+										{pendingRequests.length}
+									</span>
+								)}
+							</Button>
+						}
+					>
+						<RequestsDialog
+							pendingRequests={pendingRequests}
+							ownerSecret={ownerSecret!}
+							onAccept={onAcceptUser}
+							onReject={onRejectUser}
+						/>
+						<SettingsDialog roomId={roomId} ownerSecret={ownerSecret!} />
+					</FloatingMenu>
 				</>
 			)}
 		</div>
 	);
 }
+
+// ── Floating menu (mobile grouping) ─────────────────────────────
+
+function FloatingMenu({
+	trigger,
+	children,
+	className,
+}: {
+	trigger: React.ReactNode;
+	children: React.ReactNode;
+	className?: string;
+}) {
+	const [open, setOpen] = useState(false);
+	const menuRef = useRef<HTMLDivElement>(null);
+
+	useEffect(() => {
+		if (!open) return;
+		const onPointerDown = (e: PointerEvent) => {
+			const target = e.target as Element;
+			if (menuRef.current?.contains(target)) return;
+			// Don't close if the click landed inside a dialog (portaled outside the menu)
+			if (target.closest?.("[role='dialog']")) return;
+			setOpen(false);
+		};
+		document.addEventListener("pointerdown", onPointerDown);
+		return () => document.removeEventListener("pointerdown", onPointerDown);
+	}, [open]);
+
+	return (
+		<div className={`relative ${className ?? ""}`} ref={menuRef}>
+			<div onClick={() => setOpen((v) => !v)}>{trigger}</div>
+			{open && (
+				<div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 flex gap-2 rounded-xl bg-background border border-border p-2 shadow-lg">
+					{children}
+				</div>
+			)}
+		</div>
+	);
+}
+
+// ── Dialogs ─────────────────────────────────────────────────────
 
 function RequestsDialog({
 	pendingRequests,

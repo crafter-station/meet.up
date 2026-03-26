@@ -29,19 +29,21 @@ export function VideoCall({
 		const init = destroyPromise.then(() => {
 			if (cancelled) return;
 
+			// Always acquire devices so they can be toggled later.
+			// Passing false permanently disables the track in Daily.
 			co = DailyIframe.createCallObject({
-				audioSource: mediaSettings?.micOn !== false
-					? (mediaSettings?.selectedMicId || true)
-					: false,
-				videoSource: mediaSettings?.camOn !== false
-					? (mediaSettings?.selectedCamId || true)
-					: false,
+				audioSource: mediaSettings?.selectedMicId || true,
+				videoSource: mediaSettings?.selectedCamId || true,
 			});
 
 			setCallObject(co);
 
 			return co.join({ url: roomUrl, token }).then(() => {
-				if (!cancelled) setReady(true);
+				if (cancelled || !co) return;
+				// Apply mute state from the pre-join preview
+				if (mediaSettings?.micOn === false) co.setLocalAudio(false);
+				if (mediaSettings?.camOn === false) co.setLocalVideo(false);
+				setReady(true);
 			});
 		});
 

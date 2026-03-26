@@ -138,6 +138,9 @@ export function useAdmission({
 
 	const acceptUser = useCallback(
 		async (targetUsername: string, ownerSecret: string) => {
+			setPendingRequests((prev) =>
+				prev.filter((r) => r.username !== targetUsername),
+			);
 			await fetch(`/api/r/${roomId}/admit`, {
 				method: "POST",
 				headers: {
@@ -160,6 +163,9 @@ export function useAdmission({
 
 	const rejectUser = useCallback(
 		async (targetUsername: string, ownerSecret: string) => {
+			setPendingRequests((prev) =>
+				prev.filter((r) => r.username !== targetUsername),
+			);
 			await fetch(`/api/r/${roomId}/admit`, {
 				method: "POST",
 				headers: {

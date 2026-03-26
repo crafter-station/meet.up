@@ -18,6 +18,7 @@ import {
 	useLocalSessionId,
 	useParticipantProperty,
 } from "@daily-co/daily-react";
+import { useUser } from "@clerk/nextjs";
 import {
 	Loader2,
 	MessageSquare,
@@ -38,6 +39,11 @@ interface CallControlsProps {
 	pendingRequests: PendingRequest[];
 	onAcceptUser: (username: string, ownerSecret: string) => void;
 	onRejectUser: (username: string, ownerSecret: string) => void;
+	onLeaveCall: () => void;
+	onBroadcastOwnershipTransfer: (
+		newOwner: string,
+		newOwnerSecret: string,
+	) => void;
 }
 
 export function CallControls({
@@ -50,6 +56,8 @@ export function CallControls({
 	pendingRequests,
 	onAcceptUser,
 	onRejectUser,
+	onLeaveCall,
+	onBroadcastOwnershipTransfer,
 }: CallControlsProps) {
 	const daily = useDaily();
 	const localSessionId = useLocalSessionId();
@@ -64,6 +72,8 @@ export function CallControls({
 	const isMicOn = audioState === "playable" || audioState === "sendable";
 	const isCamOn = videoState === "playable" || videoState === "sendable";
 	const [ending, setEnding] = useState(false);
+	const [leaving, setLeaving] = useState(false);
+	const { isSignedIn } = useUser();
 
 	const {
 		cameras,
@@ -86,10 +96,44 @@ export function CallControls({
 		label: c.device.label || `Camera ${c.device.deviceId.slice(0, 4)}`,
 	}));
 
-	const leave = () => {
-		daily?.leave();
-		daily?.destroy();
-		window.location.href = "/";
+	const leave = async () => {
+		setLeaving(true);
+		try {
+			const headers: Record<string, string> = {
+				"Content-Type": "application/json",
+			};
+			if (ownerSecret) headers["X-Owner-Secret"] = ownerSecret;
+
+			const res = await fetch(`/api/r/${roomId}/leave`, {
+				method: "POST",
+				headers,
+				body: JSON.stringify({ username: daily?.participants()?.local?.user_name }),
+			});
+			const data = await res.json();
+
+			// Anonymous owner leaving — broadcast ownership transfer before navigating
+			if (data.transferred) {
+				onBroadcastOwnershipTransfer(
+					data.transferred.newOwner,
+					data.transferred.ownerSecret,
+				);
+			}
+
+			// Logged-in owner → back to preview (can re-enter)
+			if (isOwner && isSignedIn) {
+				onLeaveCall();
+				return;
+			}
+
+			// Everyone else → go home
+			daily?.leave();
+			daily?.destroy();
+			window.location.href = "/";
+		} catch {
+			daily?.leave();
+			daily?.destroy();
+			window.location.href = "/";
+		}
 	};
 
 	const handleEndMeeting = async () => {
@@ -130,25 +174,32 @@ export function CallControls({
 				size="icon"
 				className="rounded-full h-12 w-12"
 				onClick={leave}
+				disabled={leaving}
 				title="Leave call"
 			>
-				<PhoneOff className="h-5 w-5" />
-			</Button>
-
-			<Button
-				variant="destructive"
-				size="icon"
-				className="rounded-full h-12 w-12"
-				onClick={handleEndMeeting}
-				disabled={ending}
-				title="End meeting for everyone"
-			>
-				{ending ? (
+				{leaving ? (
 					<Loader2 className="h-5 w-5 animate-spin" />
 				) : (
-					<Square className="h-4 w-4 fill-current" />
+					<PhoneOff className="h-5 w-5" />
 				)}
 			</Button>
+
+			{isOwner && (
+				<Button
+					variant="destructive"
+					size="icon"
+					className="rounded-full h-12 w-12"
+					onClick={handleEndMeeting}
+					disabled={ending}
+					title="End meeting for everyone"
+				>
+					{ending ? (
+						<Loader2 className="h-5 w-5 animate-spin" />
+					) : (
+						<Square className="h-4 w-4 fill-current" />
+					)}
+				</Button>
+			)}
 
 			<div className="mx-2 h-8 w-px bg-border" />
 

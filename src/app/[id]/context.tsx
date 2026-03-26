@@ -27,6 +27,8 @@ interface RoomContextValue {
 	cancelWaiting: () => void;
 	onAdmissionAccepted: () => void;
 	onAdmissionRejected: () => void;
+	leaveCall: () => void;
+	updateOwnership: (secret: string) => void;
 }
 
 const RoomContext = createContext<RoomContextValue | null>(null);
@@ -54,11 +56,24 @@ export function RoomProvider({ roomId, children }: RoomProviderProps) {
 		selectedMicId: "",
 	});
 
-	const ownerSecret =
+	const [ownerSecret, setOwnerSecret] = useState<string | null>(() =>
 		typeof window !== "undefined"
 			? sessionStorage.getItem(`ownerSecret:${roomId}`)
-			: null;
+			: null,
+	);
 	const isOwner = !!ownerSecret;
+
+	const updateOwnership = useCallback(
+		(secret: string) => {
+			sessionStorage.setItem(`ownerSecret:${roomId}`, secret);
+			setOwnerSecret(secret);
+		},
+		[roomId],
+	);
+
+	const leaveCall = useCallback(() => {
+		setState({ status: "preview" });
+	}, []);
 
 	const effectiveUsername = username.trim();
 
@@ -132,6 +147,8 @@ export function RoomProvider({ roomId, children }: RoomProviderProps) {
 				cancelWaiting,
 				onAdmissionAccepted,
 				onAdmissionRejected,
+				leaveCall,
+				updateOwnership,
 			}}
 		>
 			{children}

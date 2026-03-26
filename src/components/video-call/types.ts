@@ -13,6 +13,8 @@ export interface VideoCallProps {
 	mediaSettings?: MediaSettings;
 	isOwner: boolean;
 	ownerSecret: string | null;
+	onLeaveCall: () => void;
+	onOwnershipReceived: (secret: string) => void;
 }
 
 export interface ChatMessage {

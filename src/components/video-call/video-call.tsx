@@ -17,6 +17,8 @@ export function VideoCall({
 	mediaSettings,
 	isOwner,
 	ownerSecret,
+	onLeaveCall,
+	onOwnershipReceived,
 }: VideoCallProps) {
 	const [callObject, setCallObject] = useState<ReturnType<
 		typeof DailyIframe.createCallObject
@@ -79,6 +81,8 @@ export function VideoCall({
 				roomId={roomId}
 				isOwner={isOwner}
 				ownerSecret={ownerSecret}
+				onLeaveCall={onLeaveCall}
+				onOwnershipReceived={onOwnershipReceived}
 			/>
 		</DailyProvider>
 	);

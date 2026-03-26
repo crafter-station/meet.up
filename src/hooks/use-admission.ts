@@ -7,7 +7,12 @@ type AdmissionEvent =
 	| { type: "admission:request"; username: string; timestamp: number }
 	| { type: "admission:accept"; username: string }
 	| { type: "admission:reject"; username: string }
-	| { type: "admission:cancel"; username: string };
+	| { type: "admission:cancel"; username: string }
+	| {
+			type: "ownership:transferred";
+			newOwner: string;
+			ownerSecret: string;
+	  };
 
 export interface PendingRequest {
 	username: string;
@@ -20,6 +25,7 @@ interface UseAdmissionOptions {
 	isOwner: boolean;
 	onAccepted?: () => void;
 	onRejected?: () => void;
+	onOwnershipReceived?: (secret: string) => void;
 }
 
 export function useAdmission({
@@ -28,6 +34,7 @@ export function useAdmission({
 	isOwner,
 	onAccepted,
 	onRejected,
+	onOwnershipReceived,
 }: UseAdmissionOptions) {
 	const [pendingRequests, setPendingRequests] = useState<PendingRequest[]>([]);
 	const [waitingStatus, setWaitingStatus] = useState<
@@ -39,8 +46,10 @@ export function useAdmission({
 	const pendingSendRef = useRef<AdmissionEvent | null>(null);
 	const onAcceptedRef = useRef(onAccepted);
 	const onRejectedRef = useRef(onRejected);
+	const onOwnershipReceivedRef = useRef(onOwnershipReceived);
 	onAcceptedRef.current = onAccepted;
 	onRejectedRef.current = onRejected;
+	onOwnershipReceivedRef.current = onOwnershipReceived;
 
 	useEffect(() => {
 		const supabase = getSupabaseClient();
@@ -94,6 +103,11 @@ export function useAdmission({
 								setPendingRequests((prev) =>
 									prev.filter((r) => r.username !== payload.username),
 								);
+							}
+							break;
+						case "ownership:transferred":
+							if (payload.newOwner === username) {
+								onOwnershipReceivedRef.current?.(payload.ownerSecret);
 							}
 							break;
 					}
@@ -186,6 +200,21 @@ export function useAdmission({
 		[roomId],
 	);
 
+	const broadcastOwnershipTransfer = useCallback(
+		(newOwner: string, newOwnerSecret: string) => {
+			channelRef.current?.send({
+				type: "broadcast",
+				event: "admission-event",
+				payload: {
+					type: "ownership:transferred",
+					newOwner,
+					ownerSecret: newOwnerSecret,
+				} satisfies AdmissionEvent,
+			});
+		},
+		[],
+	);
+
 	const cancelRequest = useCallback(() => {
 		setWaitingStatus("idle");
 		channelRef.current?.send({
@@ -205,5 +234,6 @@ export function useAdmission({
 		acceptUser,
 		rejectUser,
 		cancelRequest,
+		broadcastOwnershipTransfer,
 	};
 }

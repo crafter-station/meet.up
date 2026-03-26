@@ -10,8 +10,15 @@ export function InCallView({
 	token: string;
 	roomUrl: string;
 }) {
-	const { username, roomId, mediaSettings, isOwner, ownerSecret } =
-		useRoomContext();
+	const {
+		username,
+		roomId,
+		mediaSettings,
+		isOwner,
+		ownerSecret,
+		leaveCall,
+		updateOwnership,
+	} = useRoomContext();
 
 	return (
 		<div className="flex h-dvh">
@@ -23,6 +30,8 @@ export function InCallView({
 				mediaSettings={mediaSettings}
 				isOwner={isOwner}
 				ownerSecret={ownerSecret}
+				onLeaveCall={leaveCall}
+				onOwnershipReceived={updateOwnership}
 			/>
 		</div>
 	);

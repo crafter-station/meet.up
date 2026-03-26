@@ -19,9 +19,18 @@ interface CallUIProps {
 	roomId: string;
 	isOwner: boolean;
 	ownerSecret: string | null;
+	onLeaveCall: () => void;
+	onOwnershipReceived: (secret: string) => void;
 }
 
-export function CallUI({ username, roomId, isOwner, ownerSecret }: CallUIProps) {
+export function CallUI({
+	username,
+	roomId,
+	isOwner,
+	ownerSecret,
+	onLeaveCall,
+	onOwnershipReceived,
+}: CallUIProps) {
 	const participantIds = useParticipantIds();
 	const localSessionId = useLocalSessionId();
 	const audioState = useParticipantProperty(localSessionId, "tracks.audio.state");
@@ -48,11 +57,13 @@ export function CallUI({ username, roomId, isOwner, ownerSecret }: CallUIProps) 
 		onPartial: broadcastPartial,
 	});
 
-	const { pendingRequests, acceptUser, rejectUser } = useAdmission({
-		roomId,
-		username,
-		isOwner,
-	});
+	const { pendingRequests, acceptUser, rejectUser, broadcastOwnershipTransfer } =
+		useAdmission({
+			roomId,
+			username,
+			isOwner,
+			onOwnershipReceived,
+		});
 
 	// Merge local partial with remote partials
 	const allPartials: Record<string, string> = { ...partialTexts };
@@ -99,6 +110,8 @@ export function CallUI({ username, roomId, isOwner, ownerSecret }: CallUIProps) 
 				pendingRequests={pendingRequests}
 				onAcceptUser={acceptUser}
 				onRejectUser={rejectUser}
+				onLeaveCall={onLeaveCall}
+				onBroadcastOwnershipTransfer={broadcastOwnershipTransfer}
 			/>
 		</div>
 	);

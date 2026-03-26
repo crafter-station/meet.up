@@ -7,11 +7,21 @@ import { VideoCall } from "@/components/video-call/video-call";
 import { Mail, Video } from "lucide-react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+
+function getDisplayName(user: ReturnType<typeof useUser>["user"]): string {
+	if (!user) return "";
+	if (user.firstName) {
+		return user.lastName
+			? `${user.firstName} ${user.lastName}`
+			: user.firstName;
+	}
+	return user.emailAddresses[0]?.emailAddress ?? "";
+}
 
 export default function RoomPage() {
 	const { id } = useParams<{ id: string }>();
-	const { isSignedIn } = useUser();
+	const { isSignedIn, isLoaded, user } = useUser();
 	const [username, setUsername] = useState("");
 	const [callData, setCallData] = useState<{
 		token: string;
@@ -20,9 +30,19 @@ export default function RoomPage() {
 	const [joining, setJoining] = useState(false);
 	const [error, setError] = useState("");
 
-	const handleJoin = async (e: React.FormEvent) => {
-		e.preventDefault();
-		if (!username.trim()) return;
+	// Auto-fill username from Clerk user once loaded
+	useEffect(() => {
+		if (isLoaded && isSignedIn && user) {
+			const name = getDisplayName(user);
+			if (name) setUsername(name);
+		}
+	}, [isLoaded, isSignedIn, user]);
+
+	// Auto-join when signed in and name is resolved
+	const effectiveUsername = username.trim();
+
+	const joinRoom = async () => {
+		if (!effectiveUsername) return;
 
 		setJoining(true);
 		setError("");
@@ -31,7 +51,7 @@ export default function RoomPage() {
 			const res = await fetch(`/api/r/${id}/join`, {
 				method: "POST",
 				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify({ username: username.trim() }),
+				body: JSON.stringify({ username: effectiveUsername }),
 			});
 
 			if (!res.ok) throw new Error("Failed to join room");
@@ -45,13 +65,18 @@ export default function RoomPage() {
 		}
 	};
 
+	const handleJoin = (e: React.FormEvent) => {
+		e.preventDefault();
+		joinRoom();
+	};
+
 	if (callData) {
 		return (
 			<div className="flex h-dvh">
 				<VideoCall
 					roomUrl={callData.roomUrl}
 					token={callData.token}
-					username={username.trim()}
+					username={effectiveUsername}
 					roomId={id}
 				/>
 			</div>
@@ -69,17 +94,23 @@ export default function RoomPage() {
 			</div>
 
 			<form onSubmit={handleJoin} className="w-full max-w-xs space-y-3">
-				<Input
-					value={username}
-					onChange={(e) => setUsername(e.target.value)}
-					placeholder="Your name"
-					className="h-12 text-center"
-					autoFocus
-				/>
+				{isSignedIn ? (
+					<p className="text-center text-sm text-foreground">
+						Joining as <span className="font-medium">{effectiveUsername}</span>
+					</p>
+				) : (
+					<Input
+						value={username}
+						onChange={(e) => setUsername(e.target.value)}
+						placeholder="Your name"
+						className="h-12 text-center"
+						autoFocus
+					/>
+				)}
 				<Button
 					type="submit"
 					className="w-full h-12"
-					disabled={!username.trim() || joining}
+					disabled={!effectiveUsername || joining}
 				>
 					{joining ? "Joining..." : "Join now"}
 				</Button>

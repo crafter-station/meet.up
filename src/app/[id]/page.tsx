@@ -28,6 +28,7 @@ export default function RoomPage() {
 		roomUrl: string;
 	} | null>(null);
 	const [joining, setJoining] = useState(false);
+	const [ended, setEnded] = useState(false);
 	const [error, setError] = useState("");
 
 	// Auto-fill username from Clerk user once loaded
@@ -54,6 +55,11 @@ export default function RoomPage() {
 				body: JSON.stringify({ username: effectiveUsername }),
 			});
 
+			if (res.status === 410) {
+				setEnded(true);
+				return;
+			}
+
 			if (!res.ok) throw new Error("Failed to join room");
 
 			const data = await res.json();
@@ -69,6 +75,27 @@ export default function RoomPage() {
 		e.preventDefault();
 		joinRoom();
 	};
+
+	if (ended) {
+		return (
+			<div className="flex flex-1 flex-col items-center justify-center gap-4 px-4">
+				<div className="text-center space-y-2">
+					<h1 className="text-2xl font-bold tracking-tight">Meeting ended</h1>
+					<p className="text-sm text-muted-foreground">
+						This meeting has already ended
+					</p>
+				</div>
+				<div className="flex gap-2">
+					<Link href={`/summary/${id}`}>
+						<Button variant="secondary">View summary</Button>
+					</Link>
+					<Link href="/">
+						<Button>Start a new meeting</Button>
+					</Link>
+				</div>
+			</div>
+		);
+	}
 
 	if (callData) {
 		return (

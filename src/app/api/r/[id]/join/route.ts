@@ -22,6 +22,10 @@ export async function POST(
 		return NextResponse.json({ error: "Room not found" }, { status: 404 });
 	}
 
+	if (room.endedAt) {
+		return NextResponse.json({ error: "This meeting has ended" }, { status: 410 });
+	}
+
 	const dailyRoom = await getDailyRoom(id);
 	const { token } = await createMeetingToken(id, username);
 

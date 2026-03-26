@@ -1,13 +1,16 @@
 "use client";
 
+import { useUser, UserButton } from "@clerk/nextjs";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { ArrowRight, Video } from "lucide-react";
+import { ArrowRight, LogIn, Video } from "lucide-react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 export default function Home() {
 	const router = useRouter();
+	const { isSignedIn } = useUser();
 	const [roomCode, setRoomCode] = useState("");
 	const [creating, setCreating] = useState(false);
 
@@ -30,7 +33,20 @@ export default function Home() {
 	};
 
 	return (
-		<div className="flex flex-1 flex-col items-center justify-center gap-8 px-4">
+		<div className="flex flex-1 flex-col items-center justify-center gap-8 px-4 relative">
+			<div className="absolute top-4 right-4">
+				{isSignedIn ? (
+					<UserButton />
+				) : (
+					<Link href="/sign-in">
+						<Button variant="ghost" size="sm">
+							<LogIn className="h-4 w-4 mr-2" />
+							Sign in
+						</Button>
+					</Link>
+				)}
+			</div>
+
 			<div className="text-center space-y-2">
 				<div className="inline-flex items-center justify-center h-16 w-16 rounded-2xl bg-primary mb-4">
 					<Video className="h-8 w-8 text-primary-foreground" />

@@ -8,7 +8,7 @@ import {
 	useParticipantIds,
 	useParticipantProperty,
 } from "@daily-co/daily-react";
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { CallControls } from "./call-controls";
 import { ChatPanel } from "./chat-panel";
 import { ParticipantTile } from "./participant-tile";
@@ -25,8 +25,18 @@ export function CallUI({ username, roomId }: CallUIProps) {
 	const isMuted = audioState !== "playable" && audioState !== "sendable";
 	const [showPanel, setShowPanel] = useState(true);
 
-	const { messages, partialTexts, send, addTranscript, broadcastPartial } =
-		useRealtimeChat(roomId, username);
+	const onMeetingEnded = useCallback(() => {
+		window.location.href = `/summary/${roomId}`;
+	}, [roomId]);
+
+	const {
+		messages,
+		partialTexts,
+		send,
+		addTranscript,
+		broadcastPartial,
+		broadcastMeetingEnded,
+	} = useRealtimeChat(roomId, username, { onMeetingEnded });
 
 	const { partialText, isActive, isListening, start, stop } = useTranscription({
 		username,
@@ -73,6 +83,8 @@ export function CallUI({ username, roomId }: CallUIProps) {
 			<CallControls
 				showPanel={showPanel}
 				onTogglePanel={() => setShowPanel(!showPanel)}
+				roomId={roomId}
+				onMeetingEnded={broadcastMeetingEnded}
 			/>
 		</div>
 	);

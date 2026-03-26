@@ -8,9 +8,20 @@ import { useCallback, useEffect, useRef, useState } from "react";
 type ChatEvent =
 	| { type: "message:add"; message: ChatMessage }
 	| { type: "messages:sync"; messages: ChatMessage[] }
-	| { type: "partial:update"; text: string; speaker: string };
+	| { type: "partial:update"; text: string; speaker: string }
+	| { type: "meeting:ended" };
 
-export function useRealtimeChat(roomId: string, username: string) {
+interface UseRealtimeChatOptions {
+	onMeetingEnded?: () => void;
+}
+
+export function useRealtimeChat(
+	roomId: string,
+	username: string,
+	options?: UseRealtimeChatOptions,
+) {
+	const onMeetingEndedRef = useRef(options?.onMeetingEnded);
+	onMeetingEndedRef.current = options?.onMeetingEnded;
 	const [messages, setMessages] = useState<ChatMessage[]>([]);
 	const [partialTexts, setPartialTexts] = useState<
 		Record<string, string>
@@ -86,6 +97,9 @@ export function useRealtimeChat(roomId: string, username: string) {
 											return next;
 										})(),
 							);
+							break;
+						case "meeting:ended":
+							onMeetingEndedRef.current?.();
 							break;
 					}
 				},
@@ -173,5 +187,23 @@ export function useRealtimeChat(roomId: string, username: string) {
 		[username],
 	);
 
-	return { messages, partialTexts, send, addTranscript, broadcastPartial };
+	const broadcastMeetingEnded = useCallback(() => {
+		channelRef.current?.send({
+			type: "broadcast",
+			event: "chat-event",
+			payload: {
+				type: "meeting:ended",
+				username,
+			} satisfies ChatEvent & { username: string },
+		});
+	}, [username]);
+
+	return {
+		messages,
+		partialTexts,
+		send,
+		addTranscript,
+		broadcastPartial,
+		broadcastMeetingEnded,
+	};
 }

@@ -1,14 +1,17 @@
 "use client";
 
+import { useUser } from "@clerk/nextjs";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { VideoCall } from "@/components/video-call/video-call";
-import { Video } from "lucide-react";
+import { Mail, Video } from "lucide-react";
+import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useState } from "react";
 
 export default function RoomPage() {
 	const { id } = useParams<{ id: string }>();
+	const { isSignedIn } = useUser();
 	const [username, setUsername] = useState("");
 	const [callData, setCallData] = useState<{
 		token: string;
@@ -82,6 +85,15 @@ export default function RoomPage() {
 				</Button>
 				{error && (
 					<p className="text-sm text-destructive text-center">{error}</p>
+				)}
+				{!isSignedIn && (
+					<p className="text-xs text-muted-foreground text-center">
+						<Link href="/sign-in" className="underline underline-offset-2">
+							<Mail className="h-3 w-3 inline mr-1" />
+							Sign in
+						</Link>{" "}
+						to receive meeting notes by email
+					</p>
 				)}
 			</form>
 		</div>

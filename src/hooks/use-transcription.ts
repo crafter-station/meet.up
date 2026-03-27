@@ -2,28 +2,45 @@
 
 import type { ChatMessage } from "@/components/video-call/types";
 import { useScribe } from "@elevenlabs/react";
+import {
+	useLocalSessionId,
+	useParticipantProperty,
+} from "@daily-co/daily-react";
 import { nanoid } from "nanoid";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 interface UseTranscriptionOptions {
 	username: string;
-	muted: boolean;
 	onTranscript: (entry: ChatMessage) => void;
 	onPartial: (text: string) => void;
 }
 
 export function useTranscription({
 	username,
-	muted,
 	onTranscript,
 	onPartial,
 }: UseTranscriptionOptions) {
+	const localSessionId = useLocalSessionId();
+	const audioOff = useParticipantProperty(localSessionId, "tracks.audio.off");
+	const audioState = useParticipantProperty(
+		localSessionId,
+		"tracks.audio.state",
+	);
+
+	// Reactive mute signal straight from Daily's participant state.
+	const isMuted =
+		typeof audioOff === "boolean"
+			? audioOff
+			: audioState !== "playable" && audioState !== "sendable";
+
 	const [enabled, setEnabled] = useState(false);
 	const lastCommitCountRef = useRef(0);
 	const onTranscriptRef = useRef(onTranscript);
-	onTranscriptRef.current = onTranscript;
 	const onPartialRef = useRef(onPartial);
-	onPartialRef.current = onPartial;
+	useEffect(() => {
+		onTranscriptRef.current = onTranscript;
+		onPartialRef.current = onPartial;
+	}, [onTranscript, onPartial]);
 
 	const scribe = useScribe({
 		modelId: "scribe_v2_realtime",
@@ -51,19 +68,21 @@ export function useTranscription({
 		});
 	}, [scribe]);
 
-	// Handle mute: disconnect scribe when muted, reconnect when unmuted
+	// Connect/disconnect Scribe based on enabled + mute state.
 	useEffect(() => {
 		if (!enabled) return;
 
-		if (muted) {
+		if (isMuted) {
 			scribe.disconnect();
+			onPartialRef.current("");
 		} else {
-			connectScribe();
+			void connectScribe();
 		}
-	}, [muted, enabled, scribe, connectScribe]);
+	}, [isMuted, enabled, scribe, connectScribe]);
 
-	// Watch for new committed transcripts and push them to chat feed
+	// Watch for new committed transcripts and push them to chat feed.
 	useEffect(() => {
+		if (!enabled) return;
 		const committed = scribe.committedTranscripts;
 		if (committed.length <= lastCommitCountRef.current) return;
 
@@ -82,33 +101,34 @@ export function useTranscription({
 			});
 		}
 
-		// Clear partial after commit
 		onPartialRef.current("");
-	}, [scribe.committedTranscripts, username]);
+	}, [enabled, scribe.committedTranscripts, username]);
 
-	// Broadcast partial text changes to all participants
+	// Broadcast partial text changes to all participants.
 	useEffect(() => {
+		if (!enabled) return;
 		onPartialRef.current(scribe.partialTranscript);
-	}, [scribe.partialTranscript]);
+	}, [enabled, scribe.partialTranscript]);
 
 	const start = useCallback(async () => {
 		setEnabled(true);
-		if (!muted) {
+		lastCommitCountRef.current = scribe.committedTranscripts.length;
+		if (!isMuted) {
 			await connectScribe();
 		}
-	}, [muted, connectScribe]);
+	}, [isMuted, connectScribe, scribe]);
 
 	const stop = useCallback(() => {
 		setEnabled(false);
 		scribe.disconnect();
-		lastCommitCountRef.current = 0;
+		lastCommitCountRef.current = scribe.committedTranscripts.length;
 		onPartialRef.current("");
 	}, [scribe]);
 
 	return {
-		partialText: scribe.partialTranscript,
+		partialText: enabled ? scribe.partialTranscript : "",
 		isActive: enabled,
-		isListening: scribe.isConnected,
+		isListening: enabled && !isMuted && scribe.isConnected,
 		start,
 		stop,
 	};

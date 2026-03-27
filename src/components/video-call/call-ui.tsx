@@ -5,14 +5,14 @@ import { useRealtimeChat } from "@/hooks/use-realtime-chat";
 import { useTranscription } from "@/hooks/use-transcription";
 import {
 	DailyAudio,
-	useLocalSessionId,
+	useActiveSpeakerId,
 	useParticipantIds,
-	useParticipantProperty,
 } from "@daily-co/daily-react";
 import { useCallback, useEffect, useState } from "react";
 import { CallControls } from "./call-controls";
 import { ChatPanel } from "./chat-panel";
 import { ParticipantTile } from "./participant-tile";
+import { TranscriptionOverlay } from "./transcription-overlay";
 
 interface CallUIProps {
 	username: string;
@@ -32,10 +32,9 @@ export function CallUI({
 	onOwnershipReceived,
 }: CallUIProps) {
 	const participantIds = useParticipantIds();
-	const localSessionId = useLocalSessionId();
-	const audioState = useParticipantProperty(localSessionId, "tracks.audio.state");
-	const isMuted = audioState !== "playable" && audioState !== "sendable";
+	const activeSpeakerId = useActiveSpeakerId();
 	const [showPanel, setShowPanel] = useState(true);
+	const [mobileTranscriptionOpen, setMobileTranscriptionOpen] = useState(false);
 
 	// Keep screen awake during the call
 	useEffect(() => {
@@ -78,7 +77,6 @@ export function CallUI({
 
 	const { partialText, isActive, isListening, start, stop } = useTranscription({
 		username,
-		muted: isMuted,
 		onTranscript: addTranscript,
 		onPartial: broadcastPartial,
 	});
@@ -96,6 +94,11 @@ export function CallUI({
 	if (partialText) {
 		allPartials[username] = partialText;
 	}
+	const mobileTranscriptionStatus: "off" | "waiting" | "talking" = !isActive
+		? "off"
+		: isListening
+			? "talking"
+			: "waiting";
 
 	return (
 		<div className="flex h-full w-full flex-col">
@@ -107,10 +110,22 @@ export function CallUI({
 						className={`grid h-full gap-3 ${getGridClass(participantIds.length)}`}
 					>
 						{participantIds.map((id) => (
-							<ParticipantTile key={id} participantId={id} />
+							<ParticipantTile
+								key={id}
+								participantId={id}
+								isActiveSpeaker={id === activeSpeakerId}
+							/>
 						))}
 					</div>
 				</div>
+				<TranscriptionOverlay
+					username={username}
+					partialTexts={allPartials}
+					messages={messages}
+					mobileOpen={mobileTranscriptionOpen}
+					onMobileOpenChange={setMobileTranscriptionOpen}
+					transcription={{ isActive, isListening, start, stop }}
+				/>
 
 				{/* Side Panel — overlay on mobile, sidebar on desktop */}
 				{showPanel && (
@@ -119,8 +134,6 @@ export function CallUI({
 							messages={messages}
 							onSend={send}
 							username={username}
-							partialTexts={allPartials}
-							transcription={{ isActive, isListening, start, stop }}
 						/>
 					</div>
 				)}
@@ -129,6 +142,11 @@ export function CallUI({
 			<CallControls
 				showPanel={showPanel}
 				onTogglePanel={() => setShowPanel(!showPanel)}
+				showMobileTranscription={mobileTranscriptionOpen}
+				onToggleMobileTranscription={() =>
+					setMobileTranscriptionOpen((prev) => !prev)
+				}
+				mobileTranscriptionStatus={mobileTranscriptionStatus}
 				roomId={roomId}
 				onMeetingEnded={broadcastMeetingEnded}
 				isOwner={isOwner}

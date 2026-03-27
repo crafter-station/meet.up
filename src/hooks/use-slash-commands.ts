@@ -21,6 +21,7 @@ export function useSlashCommands({
 	const [selectedIndex, setSelectedIndex] = useState(0);
 	const [isExecuting, setIsExecuting] = useState(false);
 	const queryRef = useRef("");
+	const inputRef = useRef("");
 
 	const filteredCommands = useMemo(() => {
 		const q = queryRef.current;
@@ -29,6 +30,7 @@ export function useSlashCommands({
 	}, [isOpen]);
 
 	const handleInputChange = useCallback((value: string) => {
+		inputRef.current = value;
 		if (value.startsWith("/")) {
 			const query = value.slice(1).split(" ")[0];
 			queryRef.current = query;
@@ -85,7 +87,12 @@ export function useSlashCommands({
 				return true;
 			}
 			if (e.key === "Enter" && cmds.length > 0) {
-				selectCommand(cmds[selectedIndex] ?? cmds[0]);
+				const cmd = cmds[selectedIndex] ?? cmds[0];
+				const afterSlash = inputRef.current.slice(1);
+				const spaceIdx = afterSlash.indexOf(" ");
+				const args =
+					spaceIdx !== -1 ? afterSlash.slice(spaceIdx + 1).trim() : "";
+				selectCommand(cmd, args);
 				return true;
 			}
 			if (e.key === "Escape") {

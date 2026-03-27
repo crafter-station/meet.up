@@ -70,6 +70,7 @@ export function CallUI({
 		messages,
 		partialTexts,
 		send,
+		sendAs,
 		addTranscript,
 		broadcastPartial,
 		broadcastMeetingEnded,
@@ -133,7 +134,9 @@ export function CallUI({
 						<ChatPanel
 							messages={messages}
 							onSend={send}
+							onSendAs={sendAs}
 							username={username}
+							roomId={roomId}
 						/>
 					</div>
 				)}

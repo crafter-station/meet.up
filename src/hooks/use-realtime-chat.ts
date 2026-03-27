@@ -139,6 +139,32 @@ export function useRealtimeChat(
 		[roomId, username],
 	);
 
+	const sendAs = useCallback(
+		async (content: string, asUsername: string) => {
+			const { message, error } = await sendMessage(
+				roomId,
+				asUsername,
+				content,
+			);
+			if (error || !message) return;
+
+			const chatMsg: ChatMessage = { ...message, type: "chat" };
+
+			setMessages((prev) => [...prev, chatMsg]);
+
+			channelRef.current?.send({
+				type: "broadcast",
+				event: "chat-event",
+				payload: {
+					type: "message:add",
+					message: chatMsg,
+					username,
+				} satisfies ChatEvent & { username: string },
+			});
+		},
+		[roomId, username],
+	);
+
 	const addTranscript = useCallback(
 		async (entry: ChatMessage) => {
 			// Persist to DB
@@ -202,6 +228,7 @@ export function useRealtimeChat(
 		messages,
 		partialTexts,
 		send,
+		sendAs,
 		addTranscript,
 		broadcastPartial,
 		broadcastMeetingEnded,

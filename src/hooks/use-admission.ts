@@ -40,9 +40,7 @@ export function useAdmission({
 	const [pendingRequests, setPendingRequests] = useState<PendingRequest[]>([]);
 	const pendingRequestsRef = useRef<PendingRequest[]>([]);
 	const savedTabTitleRef = useRef<string | null>(null);
-	const tabTitleIntervalRef = useRef<ReturnType<typeof setInterval> | null>(
-		null,
-	);
+	const tabTitleIntervalRef = useRef<number | null>(null);
 	const [waitingStatus, setWaitingStatus] = useState<
 		"idle" | "waiting" | "accepted" | "rejected"
 	>("idle");

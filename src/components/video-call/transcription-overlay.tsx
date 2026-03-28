@@ -632,7 +632,34 @@ export function TranscriptionOverlay({
         ))}
 
       {/* ── Header ── */}
-      {minimized ? null : panelView === "transcript" ? (
+      {minimized ? (
+        <div
+          className={[
+            "flex items-center gap-2 px-3 py-2 shrink-0",
+            !isMobile ? "cursor-move" : "",
+          ].join(" ")}
+          onPointerDown={(e) => {
+            if (isMobile) return;
+            dragRef.current = {
+              startX: e.clientX,
+              startY: e.clientY,
+              startLeft: panelPos.left,
+              startTop: panelPos.top,
+            };
+          }}
+        >
+          <span className="text-xs text-muted-foreground">Transcription</span>
+          <div className="flex-1" />
+          <button
+            className="text-muted-foreground hover:text-foreground p-1 rounded-md hover:bg-white/5 transition-colors"
+            onPointerDown={(e) => e.stopPropagation()}
+            onClick={() => setMinimized(false)}
+            title="Expand"
+          >
+            <ChevronDown className="h-4 w-4 rotate-180" />
+          </button>
+        </div>
+      ) : panelView === "transcript" ? (
         <div
           className={[
             "flex items-center gap-1 px-3 py-2 shrink-0",
@@ -702,8 +729,8 @@ export function TranscriptionOverlay({
               <button
                 className="text-muted-foreground hover:text-foreground p-1 rounded-md hover:bg-white/5 transition-colors"
                 onPointerDown={(e) => e.stopPropagation()}
-                onClick={() => setMinimized((v) => !v)}
-                title={minimized ? "Expand" : "Minimize"}
+                onClick={() => setMinimized(true)}
+                title="Minimize"
               >
                 <Minus className="h-4 w-4" />
               </button>

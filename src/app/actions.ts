@@ -3,12 +3,14 @@
 import { clerkClient } from "@clerk/nextjs/server";
 import { db } from "@/db";
 import {
+	anonymousUsers,
 	feedItems,
 	meetingSummaries,
 	messages,
 	participants,
 	rooms,
 } from "@/db/schema";
+import { generateUsername } from "@/lib/names";
 import { emailRepository } from "@/repositories/email-repository";
 import { emailService } from "@/services/email-service";
 import { buildSummaryEmail } from "@/services/email-template";
@@ -16,7 +18,7 @@ import {
 	generateMeetingSummary,
 	type MeetingSummary,
 } from "@/services/summary-service";
-import { eq, isNull } from "drizzle-orm";
+import { and, eq, isNull, or, desc } from "drizzle-orm";
 import { nanoid } from "nanoid";
 
 export async function sendMessage(
@@ -380,4 +382,92 @@ export async function getFeedItems(roomDailyName: string) {
 			updatedAt: r.updatedAt.getTime(),
 		})),
 	};
+}
+
+// ── Anonymous users ────────────────────────────────────────────
+
+export async function getOrCreateUser(fingerprintId: string) {
+	let user = await db.query.anonymousUsers.findFirst({
+		where: eq(anonymousUsers.id, fingerprintId),
+	});
+
+	if (!user) {
+		const username = generateUsername();
+		const [newUser] = await db
+			.insert(anonymousUsers)
+			.values({ id: fingerprintId, username })
+			.returning();
+		user = newUser;
+	}
+
+	return user;
+}
+
+// ── User meetings ──────────────────────────────────────────────
+
+export async function getUserMeetings(
+	fingerprintId: string | null,
+	clerkUserId: string | null,
+) {
+	if (!fingerprintId && !clerkUserId) return { meetings: [] };
+
+	const conditions = [];
+	if (fingerprintId)
+		conditions.push(eq(participants.fingerprintId, fingerprintId));
+	if (clerkUserId) conditions.push(eq(participants.clerkUserId, clerkUserId));
+
+	const userParticipants = await db.query.participants.findMany({
+		where: conditions.length === 1 ? conditions[0] : or(...conditions),
+	});
+
+	if (userParticipants.length === 0) return { meetings: [] };
+
+	const roomIds = [...new Set(userParticipants.map((p) => p.roomId))];
+
+	const meetingRooms = await Promise.all(
+		roomIds.map((roomId) =>
+			db.query.rooms.findFirst({ where: eq(rooms.id, roomId) }),
+		),
+	);
+
+	const summaries = await Promise.all(
+		roomIds.map((roomId) =>
+			db.query.meetingSummaries.findFirst({
+				where: eq(meetingSummaries.roomId, roomId),
+			}),
+		),
+	);
+
+	const participantsByRoom = await Promise.all(
+		roomIds.map((roomId) =>
+			db.query.participants.findMany({
+				where: eq(participants.roomId, roomId),
+			}),
+		),
+	);
+
+	const meetings = meetingRooms
+		.map((room, i) => {
+			if (!room) return null;
+			const summary = summaries[i];
+			const roomParticipants = participantsByRoom[i];
+
+			return {
+				roomId: room.id,
+				dailyRoomName: room.dailyRoomName,
+				createdAt: room.createdAt.getTime(),
+				endedAt: room.endedAt?.getTime() ?? null,
+				isLive: !room.endedAt,
+				title: summary?.title ?? null,
+				summary: summary?.summary ?? null,
+				participantNames: [
+					...new Set(roomParticipants.map((p) => p.username)),
+				],
+				participantCount: roomParticipants.length,
+			};
+		})
+		.filter(Boolean)
+		.sort((a, b) => b!.createdAt - a!.createdAt);
+
+	return { meetings };
 }

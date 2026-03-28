@@ -1,6 +1,7 @@
 "use client";
 
 import { Input } from "@/components/ui/input";
+import { notify } from "@/lib/notify";
 import type { ChatMessage } from "@/components/video-call/types";
 import type { ToolUIPart } from "ai";
 import { LinkPreviews } from "@/components/ai-elements/link-preview";
@@ -246,7 +247,10 @@ export function TranscriptionOverlay({
     const text = transcriptMsgs
       .map((m) => `${m.username}: ${m.content}`)
       .join("\n");
-    navigator.clipboard.writeText(text);
+    navigator.clipboard.writeText(text).then(
+      () => notify("success", { title: "Transcript copied" }),
+      () => notify("error", { title: "Failed to copy transcript" }),
+    );
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   }, [messages]);
@@ -284,7 +288,10 @@ export function TranscriptionOverlay({
     setMessages: setAiMessages,
   } = useChat({
     transport,
-    onError: (err) => console.error("AI chat error:", err),
+    onError: (err) => {
+      console.error("AI chat error:", err);
+      notify("error", { title: "AI chat error", sound: false });
+    },
   });
 
   const isAiLoading = aiStatus === "streaming" || aiStatus === "submitted";

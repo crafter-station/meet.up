@@ -1,6 +1,7 @@
 "use client";
 
 import { useUser, UserButton } from "@clerk/nextjs";
+import { notify } from "@/lib/notify";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -440,9 +441,12 @@ export default function Home() {
 		setCreating(true);
 		try {
 			const res = await fetch("/api/r", { method: "POST" });
+			if (!res.ok) throw new Error("Failed to create room");
 			const { id, ownerSecret } = await res.json();
 			sessionStorage.setItem(`ownerSecret:${id}`, ownerSecret);
 			router.push(`/${id}`);
+		} catch {
+			notify("error", { title: "Failed to create room" });
 		} finally {
 			setCreating(false);
 		}

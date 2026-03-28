@@ -1,6 +1,7 @@
 "use client";
 
 import { endMeetingQuick } from "@/app/actions";
+import { notify } from "@/lib/notify";
 import { CamToggle, MicToggle } from "@/components/media-toggles";
 import { Button } from "@/components/ui/button";
 import {
@@ -162,6 +163,7 @@ export function CallControls({
       daily?.destroy();
       window.location.href = `/summary/${roomId}`;
     } catch {
+      notify("error", { title: "Failed to end meeting" });
       daily?.leave();
       daily?.destroy();
       window.location.href = "/";
@@ -485,7 +487,7 @@ function SettingsDialog({
     setLoading(true);
     const next = !autoAccept;
     try {
-      await fetch(`/api/r/${roomId}/settings`, {
+      const res = await fetch(`/api/r/${roomId}/settings`, {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
@@ -493,7 +495,11 @@ function SettingsDialog({
         },
         body: JSON.stringify({ autoAccept: next }),
       });
+      if (!res.ok) throw new Error();
       setAutoAccept(next);
+      notify("success", { title: `Auto-accept ${next ? "enabled" : "disabled"}` });
+    } catch {
+      notify("error", { title: "Failed to update settings" });
     } finally {
       setLoading(false);
     }

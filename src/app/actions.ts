@@ -471,3 +471,60 @@ export async function getUserMeetings(
 
 	return { meetings };
 }
+
+// ── Summary access control ─────────────────────────────────────
+
+export async function verifySummaryAccess(
+	dailyRoomName: string,
+	fingerprintId: string | null,
+	clerkUserId: string | null,
+): Promise<{ allowed: boolean }> {
+	const room = await db.query.rooms.findFirst({
+		where: eq(rooms.dailyRoomName, dailyRoomName),
+	});
+	if (!room) return { allowed: false };
+
+	// Check if summary is public
+	const summary = await db.query.meetingSummaries.findFirst({
+		where: eq(meetingSummaries.roomId, room.id),
+	});
+	if (summary?.isPublic) return { allowed: true };
+
+	// Check if user is a participant
+	if (!fingerprintId && !clerkUserId) return { allowed: false };
+
+	const conditions = [eq(participants.roomId, room.id)];
+	const identityConditions = [];
+	if (fingerprintId)
+		identityConditions.push(eq(participants.fingerprintId, fingerprintId));
+	if (clerkUserId)
+		identityConditions.push(eq(participants.clerkUserId, clerkUserId));
+
+	const participant = await db.query.participants.findFirst({
+		where: and(...conditions, or(...identityConditions)),
+	});
+
+	return { allowed: !!participant };
+}
+
+export async function toggleSummaryVisibility(
+	dailyRoomName: string,
+	isPublic: boolean,
+) {
+	const room = await db.query.rooms.findFirst({
+		where: eq(rooms.dailyRoomName, dailyRoomName),
+	});
+	if (!room) return { error: "Room not found" };
+
+	const summary = await db.query.meetingSummaries.findFirst({
+		where: eq(meetingSummaries.roomId, room.id),
+	});
+	if (!summary) return { error: "Summary not found" };
+
+	await db
+		.update(meetingSummaries)
+		.set({ isPublic })
+		.where(eq(meetingSummaries.id, summary.id));
+
+	return { ok: true, isPublic };
+}

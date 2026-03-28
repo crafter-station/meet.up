@@ -6,6 +6,7 @@ import {
   getCachedSummary,
   setCachedSummary,
 } from "@/lib/summary-cache";
+import { toggleSummaryVisibility } from "@/app/actions";
 import {
   Check,
   CheckSquare,
@@ -13,8 +14,11 @@ import {
   CircleCheck,
   Clock,
   Copy,
+  Globe,
   Home,
+  Link2,
   Loader2,
+  Lock,
   PenLine,
   Sparkles,
   Users,
@@ -75,6 +79,7 @@ interface SummaryClientProps {
     content: string;
     isDone: boolean;
   }[];
+  isPublic?: boolean;
 }
 
 export function SummaryClient({
@@ -85,9 +90,13 @@ export function SummaryClient({
   artifacts,
   notes,
   actionItems,
+  isPublic: initialIsPublic = false,
 }: SummaryClientProps) {
   const [title, setTitle] = useState("");
   const [summaryText, setSummaryText] = useState("");
+  const [isPublic, setIsPublic] = useState(initialIsPublic);
+  const [toggling, setToggling] = useState(false);
+  const [linkCopied, setLinkCopied] = useState(false);
   const [streaming, setStreaming] = useState(false);
   const [done, setDone] = useState(false);
   const startedRef = useRef(false);
@@ -258,7 +267,55 @@ export function SummaryClient({
               </div>
             )}
           </div>
-        </div>
+
+          {/* Visibility & share controls */}
+          <div className="flex items-center gap-2 pt-1">
+            <button
+              type="button"
+              className="flex items-center gap-1.5 rounded-full border border-border/30 px-3 py-1 text-xs transition-colors hover:bg-muted/30 disabled:opacity-50"
+              disabled={toggling}
+              onClick={async () => {
+                setToggling(true);
+                const result = await toggleSummaryVisibility(roomId, !isPublic);
+                if ("isPublic" in result) setIsPublic(result.isPublic ?? false);
+                setToggling(false);
+              }}
+            >
+              {isPublic ? (
+                <>
+                  <Globe className="h-3 w-3 text-emerald-400" />
+                  <span className="text-emerald-400">Public</span>
+                </>
+              ) : (
+                <>
+                  <Lock className="h-3 w-3 text-muted-foreground" />
+                  <span className="text-muted-foreground">Private</span>
+                </>
+              )}
+            </button>
+            <button
+              type="button"
+              className="flex items-center gap-1.5 rounded-full border border-border/30 px-3 py-1 text-xs text-muted-foreground transition-colors hover:bg-muted/30"
+              onClick={() => {
+                navigator.clipboard.writeText(window.location.href);
+                setLinkCopied(true);
+                setTimeout(() => setLinkCopied(false), 2000);
+              }}
+            >
+              {linkCopied ? (
+                <>
+                  <Check className="h-3 w-3 text-emerald-400" />
+                  <span className="text-emerald-400">Copied!</span>
+                </>
+              ) : (
+                <>
+                  <Link2 className="h-3 w-3" />
+                  Copy link
+                </>
+              )}
+            </button>
+          </div>
+          </div>
 
         {/* Streaming summary */}
         <div className="space-y-2">

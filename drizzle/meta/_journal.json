@@ -36,6 +36,13 @@
       "when": 1774678653996,
       "tag": "0004_rapid_major_mapleleaf",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1774714826519,
+      "tag": "0005_cynical_titania",
+      "breakpoints": true
     }
   ]
 }

@@ -25,6 +25,40 @@ function playSubtleSound() {
   }
 }
 
+/** Short two-tone chime for “someone wants to join” (host only). */
+export function playAdmissionRequestSound() {
+  try {
+    const ctx = new AudioContext();
+    const master = ctx.createGain();
+    master.gain.value = 0.09;
+    master.connect(ctx.destination);
+
+    const note = (freq: number, when: number, len: number) => {
+      const osc = ctx.createOscillator();
+      const g = ctx.createGain();
+      osc.connect(g);
+      g.connect(master);
+      osc.type = "sine";
+      osc.frequency.setValueAtTime(freq, when);
+      g.gain.setValueAtTime(0.001, when);
+      g.gain.linearRampToValueAtTime(1, when + 0.02);
+      g.gain.exponentialRampToValueAtTime(0.001, when + len);
+      osc.start(when);
+      osc.stop(when + len);
+    };
+
+    const t = ctx.currentTime;
+    note(784, t, 0.1);
+    note(988, t + 0.12, 0.12);
+
+    window.setTimeout(() => {
+      ctx.close().catch(() => {});
+    }, 320);
+  } catch {
+    // Audio not available — silent fallback
+  }
+}
+
 type NotifyOptions = {
   title: string;
   description?: string;

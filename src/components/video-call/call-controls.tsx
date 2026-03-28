@@ -4,6 +4,7 @@ import { endMeetingQuick } from "@/app/actions";
 import { notify } from "@/lib/notify";
 import { CamToggle, MicToggle } from "@/components/media-toggles";
 import { Button } from "@/components/ui/button";
+import { Switch } from "@/components/ui/switch";
 import {
   Dialog,
   DialogContent,
@@ -486,9 +487,8 @@ function SettingsDialog({
     // It stays in sync because only the owner can change it.
   }, []);
 
-  const toggle = async () => {
+  const updateAutoAccept = async (next: boolean) => {
     setLoading(true);
-    const next = !autoAccept;
     try {
       const res = await fetch(`/api/r/${roomId}/settings`, {
         method: "PATCH",
@@ -533,14 +533,13 @@ function SettingsDialog({
               When off, you must approve each person before they can join.
             </p>
           </div>
-          <Button
-            variant={autoAccept ? "default" : "secondary"}
-            size="sm"
-            onClick={toggle}
+          <Switch
+            className="shrink-0"
+            checked={autoAccept}
+            onCheckedChange={(checked) => void updateAutoAccept(checked)}
             disabled={loading}
-          >
-            {autoAccept ? "On" : "Off"}
-          </Button>
+            aria-label="Auto-accept participants"
+          />
         </div>
       </DialogContent>
     </Dialog>

@@ -20,7 +20,7 @@ import {
   useParticipantProperty,
 } from "@daily-co/daily-react";
 import {
-  Captions,
+  Bot,
   Loader2,
   MessageSquare,
   PhoneOff,
@@ -303,7 +303,7 @@ export function CallControls({
         onClick={onToggleMobileTranscription}
         title={`Transcription: ${mobileTranscriptionStatusLabel}`}
       >
-        <Captions className="h-5 w-5" />
+        <Bot className="h-5 w-5" />
         {mobileTranscriptionStatus !== "off" && (
           <span
             className={`absolute -top-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-background ${mobileTranscriptionDotClass}`}

@@ -3,6 +3,7 @@
 import { useUser } from "@clerk/nextjs";
 import { Loader2 } from "lucide-react";
 import { GitHubCard } from "./github-card";
+import { GoogleCalendarCard } from "./google-calendar-card";
 
 export function SettingsClient() {
 	const { isLoaded } = useUser();
@@ -32,6 +33,7 @@ export function SettingsClient() {
 						Integrations
 					</h2>
 					<GitHubCard />
+					<GoogleCalendarCard />
 				</div>
 			</div>
 		</div>

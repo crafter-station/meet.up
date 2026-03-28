@@ -31,6 +31,24 @@ You have access to GitHub tools via the user's connected account. You can:
 
 When the user asks you to perform GitHub operations (e.g. "open an issue", "summarize this repo", "list PRs"), use the available GitHub tools directly. Always confirm the repository owner/name before performing write operations.`;
 
-export function getSystemPrompt(options: { hasGitHub: boolean }): string {
-	return options.hasGitHub ? basePrompt + githubPrompt : basePrompt;
+const googleCalendarPrompt = `
+
+Google Calendar Integration:
+You have access to Google Calendar tools via the user's connected account. You can:
+- List upcoming events and meetings for any date range
+- Create new calendar events with attendees, location, and description
+- Update existing events (reschedule, change attendees, etc.)
+- Delete/cancel events
+- Search for events by keyword
+
+When the user asks about their schedule, upcoming meetings, or wants to create/modify calendar events, use the available Google Calendar tools directly. Always confirm event details (especially date/time and attendees) before creating or modifying events. When displaying events, format dates and times clearly.`;
+
+export function getSystemPrompt(options: {
+	hasGitHub: boolean;
+	hasGoogleCalendar: boolean;
+}): string {
+	let prompt = basePrompt;
+	if (options.hasGitHub) prompt += githubPrompt;
+	if (options.hasGoogleCalendar) prompt += googleCalendarPrompt;
+	return prompt;
 }

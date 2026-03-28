@@ -8,9 +8,9 @@ import {
 	useActiveSpeakerId,
 	useParticipantIds,
 } from "@daily-co/daily-react";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { CallControls } from "./call-controls";
-import { ChatPanel } from "./chat-panel";
+import { MeetingFeed } from "./meeting-feed";
 import { ParticipantTile } from "./participant-tile";
 import { TranscriptionOverlay } from "./transcription-overlay";
 
@@ -34,7 +34,7 @@ export function CallUI({
 	const participantIds = useParticipantIds();
 	const activeSpeakerId = useActiveSpeakerId();
 	const [showPanel, setShowPanel] = useState(true);
-	const [mobileTranscriptionOpen, setMobileTranscriptionOpen] = useState(false);
+	const [mobileTranscriptionOpen, setMobileTranscriptionOpen] = useState(true);
 
 	// Keep screen awake during the call
 	useEffect(() => {
@@ -68,10 +68,13 @@ export function CallUI({
 
 	const {
 		messages,
+		feedItems,
 		partialTexts,
 		send,
 		sendAs,
 		addTranscript,
+		addFeedItem,
+		updateFeedItem,
 		broadcastPartial,
 		broadcastMeetingEnded,
 	} = useRealtimeChat(roomId, username, { onMeetingEnded });
@@ -81,6 +84,14 @@ export function CallUI({
 		onTranscript: addTranscript,
 		onPartial: broadcastPartial,
 	});
+
+	// Auto-start transcription for everyone when joining the call
+	const autoStartedRef = useRef(false);
+	useEffect(() => {
+		if (autoStartedRef.current) return;
+		autoStartedRef.current = true;
+		start();
+	}, [start]);
 
 	const { pendingRequests, acceptUser, rejectUser, broadcastOwnershipTransfer } =
 		useAdmission({
@@ -125,18 +136,35 @@ export function CallUI({
 					messages={messages}
 					mobileOpen={mobileTranscriptionOpen}
 					onMobileOpenChange={setMobileTranscriptionOpen}
+					isOwner={isOwner}
 					transcription={{ isActive, isListening, start, stop }}
+					onPinToFeed={async (content, _title, metadata) => {
+						const itemId = await addFeedItem({ type: "artifact", content, title: "", metadata });
+						if (!itemId) return;
+						try {
+							const res = await fetch("/api/generate-title", {
+								method: "POST",
+								headers: { "Content-Type": "application/json" },
+								body: JSON.stringify({ content }),
+							});
+							const { title: generated } = await res.json();
+							updateFeedItem(itemId, { title: generated });
+						} catch {
+							updateFeedItem(itemId, { title: content.slice(0, 50) });
+						}
+					}}
 				/>
 
 				{/* Side Panel — overlay on mobile, sidebar on desktop */}
 				{showPanel && (
 					<div className="absolute inset-0 z-10 flex flex-col bg-background md:static md:inset-auto md:z-auto md:w-80 md:border-l md:border-border">
-						<ChatPanel
+						<MeetingFeed
 							messages={messages}
-							onSend={send}
-							onSendAs={sendAs}
+							feedItems={feedItems}
+							onSendChat={send}
+							onAddFeedItem={addFeedItem}
+							onUpdateFeedItem={updateFeedItem}
 							username={username}
-							roomId={roomId}
 						/>
 					</div>
 				)}

@@ -1,6 +1,6 @@
 "use client";
 
-import { endMeeting } from "@/app/actions";
+import { endMeetingQuick } from "@/app/actions";
 import { CamToggle, MicToggle } from "@/components/media-toggles";
 import { Button } from "@/components/ui/button";
 import {
@@ -156,7 +156,7 @@ export function CallControls({
   const handleEndMeeting = async () => {
     setEnding(true);
     try {
-      await endMeeting(roomId);
+      await endMeetingQuick(roomId);
       onMeetingEnded();
       daily?.leave();
       daily?.destroy();

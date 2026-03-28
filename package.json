@@ -23,6 +23,7 @@
     "@daily-co/daily-react": "^0.24.0",
     "@elevenlabs/react": "^0.15.0",
     "@modelcontextprotocol/server-github": "^2025.4.8",
+    "@fingerprintjs/fingerprintjs": "^5.1.0",
     "@radix-ui/react-use-controllable-state": "^1.2.2",
     "@streamdown/code": "^1.1.1",
     "@supabase/supabase-js": "^2.100.0",

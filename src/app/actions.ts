@@ -2,7 +2,13 @@
 
 import { clerkClient } from "@clerk/nextjs/server";
 import { db } from "@/db";
-import { meetingSummaries, messages, participants, rooms } from "@/db/schema";
+import {
+	feedItems,
+	meetingSummaries,
+	messages,
+	participants,
+	rooms,
+} from "@/db/schema";
 import { emailRepository } from "@/repositories/email-repository";
 import { emailService } from "@/services/email-service";
 import { buildSummaryEmail } from "@/services/email-template";
@@ -114,6 +120,27 @@ export async function getMessages(roomDailyName: string) {
 	};
 }
 
+/** Fast end — just marks room as ended, no summary generation. */
+export async function endMeetingQuick(roomDailyName: string) {
+	const room = await db.query.rooms.findFirst({
+		where: eq(rooms.dailyRoomName, roomDailyName),
+	});
+	if (!room) return { error: "Room not found" };
+	if (room.endedAt) return { ok: true };
+
+	await db
+		.update(rooms)
+		.set({ endedAt: new Date() })
+		.where(eq(rooms.id, room.id));
+
+	await db
+		.update(participants)
+		.set({ leftAt: new Date() })
+		.where(eq(participants.roomId, room.id));
+
+	return { ok: true };
+}
+
 export async function endMeeting(roomDailyName: string): Promise<{
 	summary: MeetingSummary | null;
 	emailsSent: number;
@@ -165,7 +192,13 @@ export async function endMeeting(roomDailyName: string): Promise<{
 		orderBy: (m, { asc }) => [asc(m.createdAt)],
 	});
 
-	if (allMessages.length === 0) {
+	// 4b. Fetch all feed items
+	const allFeedItems = await db.query.feedItems.findMany({
+		where: eq(feedItems.roomId, room.id),
+		orderBy: (f, { asc }) => [asc(f.createdAt)],
+	});
+
+	if (allMessages.length === 0 && allFeedItems.length === 0) {
 		return { summary: null, emailsSent: 0 };
 	}
 
@@ -180,6 +213,13 @@ export async function endMeeting(roomDailyName: string): Promise<{
 				timestamp: m.createdAt.getTime(),
 			})),
 			roomDailyName,
+			allFeedItems.map((f) => ({
+				type: f.type,
+				username: f.username,
+				title: f.title ?? undefined,
+				content: f.content,
+				isDone: f.isDone,
+			})),
 		);
 
 		// Save summary to DB
@@ -242,4 +282,102 @@ export async function endMeeting(roomDailyName: string): Promise<{
 	}
 
 	return { summary, emailsSent };
+}
+
+// ── Feed items ──────────────────────────────────────────────────
+
+export async function addFeedItem(
+	roomDailyName: string,
+	username: string,
+	item: {
+		type: string;
+		title?: string;
+		content: string;
+		metadata?: string;
+	},
+) {
+	const room = await db.query.rooms.findFirst({
+		where: eq(rooms.dailyRoomName, roomDailyName),
+	});
+	if (!room) return { error: "Room not found" };
+
+	const id = nanoid();
+	const now = new Date();
+
+	await db.insert(feedItems).values({
+		id,
+		roomId: room.id,
+		username,
+		type: item.type,
+		title: item.title ?? null,
+		content: item.content,
+		metadata: item.metadata ?? null,
+		isDone: false,
+		createdAt: now,
+		updatedAt: now,
+	});
+
+	return {
+		item: {
+			id,
+			username,
+			type: item.type as "artifact" | "note" | "action_item",
+			title: item.title,
+			content: item.content,
+			metadata: item.metadata,
+			isDone: false,
+			createdAt: now.getTime(),
+			updatedAt: now.getTime(),
+		},
+	};
+}
+
+export async function updateFeedItem(
+	roomDailyName: string,
+	itemId: string,
+	updates: { content?: string; title?: string; isDone?: boolean },
+) {
+	const room = await db.query.rooms.findFirst({
+		where: eq(rooms.dailyRoomName, roomDailyName),
+	});
+	if (!room) return { error: "Room not found" };
+
+	const now = new Date();
+	const values: Record<string, unknown> = { updatedAt: now };
+	if (updates.content !== undefined) values.content = updates.content;
+	if (updates.title !== undefined) values.title = updates.title;
+	if (updates.isDone !== undefined) values.isDone = updates.isDone;
+
+	await db
+		.update(feedItems)
+		.set(values)
+		.where(eq(feedItems.id, itemId));
+
+	return { success: true };
+}
+
+export async function getFeedItems(roomDailyName: string) {
+	const room = await db.query.rooms.findFirst({
+		where: eq(rooms.dailyRoomName, roomDailyName),
+	});
+	if (!room) return { items: [] };
+
+	const rows = await db.query.feedItems.findMany({
+		where: eq(feedItems.roomId, room.id),
+		orderBy: (f, { asc }) => [asc(f.createdAt)],
+	});
+
+	return {
+		items: rows.map((r) => ({
+			id: r.id,
+			username: r.username,
+			type: r.type as "artifact" | "note" | "action_item",
+			title: r.title ?? undefined,
+			content: r.content,
+			metadata: r.metadata ?? undefined,
+			isDone: r.isDone,
+			createdAt: r.createdAt.getTime(),
+			updatedAt: r.updatedAt.getTime(),
+		})),
+	};
 }

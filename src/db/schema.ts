@@ -34,6 +34,21 @@ export const messages = pgTable("messages", {
 	createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
+export const feedItems = pgTable("feed_items", {
+	id: text("id").primaryKey(), // nanoid
+	roomId: uuid("room_id")
+		.references(() => rooms.id)
+		.notNull(),
+	username: text("username").notNull(),
+	type: text("type").notNull(), // "artifact" | "note" | "action_item"
+	title: text("title"),
+	content: text("content").notNull(),
+	metadata: text("metadata"), // JSON blob for AI tool outputs
+	isDone: boolean("is_done").notNull().default(false),
+	createdAt: timestamp("created_at").defaultNow().notNull(),
+	updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
 export const meetingSummaries = pgTable("meeting_summaries", {
 	id: text("id").primaryKey(),
 	roomId: uuid("room_id")

@@ -29,6 +29,13 @@
       "when": 1774537761145,
       "tag": "0003_previous_the_stranger",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1774678653996,
+      "tag": "0004_rapid_major_mapleleaf",
+      "breakpoints": true
     }
   ]
 }

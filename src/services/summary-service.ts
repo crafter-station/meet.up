@@ -17,6 +17,14 @@ interface MessageInput {
 	timestamp: number;
 }
 
+interface FeedItemInput {
+	type: string;
+	username: string;
+	title?: string;
+	content: string;
+	isDone: boolean;
+}
+
 function formatMessages(messages: MessageInput[]): string {
 	return messages
 		.map((m) => {
@@ -27,11 +35,26 @@ function formatMessages(messages: MessageInput[]): string {
 		.join("\n");
 }
 
+function formatFeedItems(items: FeedItemInput[]): string {
+	if (items.length === 0) return "";
+	const lines = items.map((f) => {
+		if (f.type === "artifact")
+			return `[artifact] ${f.title ?? "AI Response"}: ${f.content}`;
+		if (f.type === "note") return `[note] ${f.username}: ${f.content}`;
+		if (f.type === "action_item")
+			return `[action-item] ${f.content} (done: ${f.isDone ? "yes" : "no"})`;
+		return `[${f.type}] ${f.content}`;
+	});
+	return `\n\n--- MEETING FEED ITEMS ---\n${lines.join("\n")}`;
+}
+
 export async function generateMeetingSummary(
 	messages: MessageInput[],
 	roomName: string,
+	feedItemInputs: FeedItemInput[] = [],
 ): Promise<MeetingSummary> {
-	const transcript = formatMessages(messages);
+	const transcript =
+		formatMessages(messages) + formatFeedItems(feedItemInputs);
 
 	const { text } = await generateText({
 		model: openai("gpt-4o-mini"),

@@ -12,7 +12,7 @@ export async function POST(
 	{ params }: { params: Promise<{ id: string }> },
 ) {
 	const { id } = await params;
-	const { username } = await req.json();
+	const { username, fingerprintId } = await req.json();
 	const ownerSecret = req.headers.get("x-owner-secret");
 	const { userId: clerkUserId } = await auth();
 
@@ -45,7 +45,9 @@ export async function POST(
 	const dailyRoom = await getDailyRoom(id);
 	const { token } = await createMeetingToken(id, username);
 
-	const participantId = `${username}_${room.id}`;
+	// Use fingerprintId for stable participant ID when available
+	const stableId = fingerprintId ?? username;
+	const participantId = `${stableId}_${room.id}`;
 	await db
 		.insert(participants)
 		.values({
@@ -53,10 +55,16 @@ export async function POST(
 			roomId: room.id,
 			username,
 			clerkUserId: clerkUserId ?? null,
+			fingerprintId: fingerprintId ?? null,
 		})
 		.onConflictDoUpdate({
 			target: participants.id,
-			set: { username, joinedAt: new Date(), clerkUserId: clerkUserId ?? null },
+			set: {
+				username,
+				joinedAt: new Date(),
+				clerkUserId: clerkUserId ?? null,
+				fingerprintId: fingerprintId ?? null,
+			},
 		});
 
 	return NextResponse.json({ token, roomUrl: dailyRoom.url });

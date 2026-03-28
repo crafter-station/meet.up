@@ -31,3 +31,35 @@ export interface TranscriptEntry {
 	text: string;
 	timestamp: number;
 }
+
+// ── Feed items ──────────────────────────────────────────────────
+
+interface FeedItemBase {
+	id: string;
+	username: string;
+	title?: string;
+	content: string;
+	createdAt: number;
+	updatedAt: number;
+}
+
+export interface ArtifactFeedItem extends FeedItemBase {
+	type: "artifact";
+	metadata?: string;
+	generatingTitle?: boolean;
+}
+
+export interface NoteFeedItem extends FeedItemBase {
+	type: "note";
+}
+
+export interface ActionItemFeedItem extends FeedItemBase {
+	type: "action_item";
+	isDone: boolean;
+}
+
+export type FeedItem = ArtifactFeedItem | NoteFeedItem | ActionItemFeedItem;
+
+export type TimelineEntry =
+	| { kind: "chat"; data: ChatMessage }
+	| { kind: "feed"; data: FeedItem };

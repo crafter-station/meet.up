@@ -1,7 +1,14 @@
 "use client";
 
-import { getMessages, saveTranscript, sendMessage } from "@/app/actions";
-import type { ChatMessage } from "@/components/video-call/types";
+import {
+	addFeedItem as addFeedItemAction,
+	getFeedItems,
+	getMessages,
+	saveTranscript,
+	sendMessage,
+	updateFeedItem as updateFeedItemAction,
+} from "@/app/actions";
+import type { ChatMessage, FeedItem } from "@/components/video-call/types";
 import { getSupabaseClient } from "@/lib/supabase";
 import { useCallback, useEffect, useRef, useState } from "react";
 
@@ -9,7 +16,10 @@ type ChatEvent =
 	| { type: "message:add"; message: ChatMessage }
 	| { type: "messages:sync"; messages: ChatMessage[] }
 	| { type: "partial:update"; text: string; speaker: string }
-	| { type: "meeting:ended" };
+	| { type: "meeting:ended" }
+	| { type: "feeditem:add"; item: FeedItem }
+	| { type: "feeditem:update"; id: string; updates: Partial<FeedItem> }
+	| { type: "feeditems:sync"; items: FeedItem[] };
 
 interface UseRealtimeChatOptions {
 	onMeetingEnded?: () => void;
@@ -23,6 +33,7 @@ export function useRealtimeChat(
 	const onMeetingEndedRef = useRef(options?.onMeetingEnded);
 	onMeetingEndedRef.current = options?.onMeetingEnded;
 	const [messages, setMessages] = useState<ChatMessage[]>([]);
+	const [feedItems, setFeedItems] = useState<FeedItem[]>([]);
 	const [partialTexts, setPartialTexts] = useState<
 		Record<string, string>
 	>({});
@@ -31,11 +42,16 @@ export function useRealtimeChat(
 	> | null>(null);
 	const messagesRef = useRef(messages);
 	messagesRef.current = messages;
+	const feedItemsRef = useRef(feedItems);
+	feedItemsRef.current = feedItems;
 
-	// Load existing chat messages on mount
+	// Load existing chat messages and feed items on mount
 	useEffect(() => {
 		getMessages(roomId).then(({ messages: existing }) => {
 			setMessages(existing);
+		});
+		getFeedItems(roomId).then(({ items }) => {
+			setFeedItems(items);
 		});
 	}, [roomId]);
 
@@ -53,6 +69,17 @@ export function useRealtimeChat(
 						payload: {
 							type: "messages:sync",
 							messages: messagesRef.current,
+							username,
+						} satisfies ChatEvent & { username: string },
+					});
+				}
+				if (feedItemsRef.current.length > 0) {
+					channel.send({
+						type: "broadcast",
+						event: "chat-event",
+						payload: {
+							type: "feeditems:sync",
+							items: feedItemsRef.current,
 							username,
 						} satisfies ChatEvent & { username: string },
 					});
@@ -97,6 +124,31 @@ export function useRealtimeChat(
 											return next;
 										})(),
 							);
+							break;
+						case "feeditem:add":
+							setFeedItems((prev) => {
+								if (prev.some((f) => f.id === payload.item.id))
+									return prev;
+								return [...prev, payload.item];
+							});
+							break;
+						case "feeditem:update":
+							setFeedItems((prev) =>
+								prev.map((f) =>
+									f.id === payload.id
+										? ({ ...f, ...payload.updates } as FeedItem)
+										: f,
+								),
+							);
+							break;
+						case "feeditems:sync":
+							setFeedItems((prev) => {
+								const existingIds = new Set(prev.map((f) => f.id));
+								const newItems = payload.items.filter(
+									(f: FeedItem) => !existingIds.has(f.id),
+								);
+								return [...prev, ...newItems];
+							});
 							break;
 						case "meeting:ended":
 							onMeetingEndedRef.current?.();
@@ -224,12 +276,73 @@ export function useRealtimeChat(
 		});
 	}, [username]);
 
+	const addFeedItem = useCallback(
+		async (item: {
+			type: string;
+			title?: string;
+			content: string;
+			metadata?: string;
+		}): Promise<string | null> => {
+			const { item: saved, error } = await addFeedItemAction(
+				roomId,
+				username,
+				item,
+			);
+			if (error || !saved) return null;
+
+			setFeedItems((prev) => [...prev, saved as FeedItem]);
+
+			channelRef.current?.send({
+				type: "broadcast",
+				event: "chat-event",
+				payload: {
+					type: "feeditem:add",
+					item: saved,
+					username,
+				} satisfies ChatEvent & { username: string },
+			});
+
+			return saved.id;
+		},
+		[roomId, username],
+	);
+
+	const updateFeedItem = useCallback(
+		async (
+			itemId: string,
+			updates: { content?: string; title?: string; isDone?: boolean },
+		) => {
+			await updateFeedItemAction(roomId, itemId, updates);
+
+			setFeedItems((prev) =>
+				prev.map((f) =>
+					f.id === itemId ? ({ ...f, ...updates, updatedAt: Date.now() } as FeedItem) : f,
+				),
+			);
+
+			channelRef.current?.send({
+				type: "broadcast",
+				event: "chat-event",
+				payload: {
+					type: "feeditem:update",
+					id: itemId,
+					updates,
+					username,
+				} satisfies ChatEvent & { username: string },
+			});
+		},
+		[roomId, username],
+	);
+
 	return {
 		messages,
+		feedItems,
 		partialTexts,
 		send,
 		sendAs,
 		addTranscript,
+		addFeedItem,
+		updateFeedItem,
 		broadcastPartial,
 		broadcastMeetingEnded,
 	};

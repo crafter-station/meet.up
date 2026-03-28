@@ -67,5 +67,6 @@ export const meetingSummaries = pgTable("meeting_summaries", {
 	keyTopics: text("key_topics").notNull(),
 	actionItems: text("action_items").notNull(),
 	decisions: text("decisions").notNull(),
+	isPublic: boolean("is_public").notNull().default(false),
 	createdAt: timestamp("created_at").defaultNow().notNull(),
 });

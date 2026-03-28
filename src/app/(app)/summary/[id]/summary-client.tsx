@@ -3,6 +3,10 @@
 import { MessageResponse } from "@/components/ai-elements/message";
 import { Button } from "@/components/ui/button";
 import {
+  getCachedSummary,
+  setCachedSummary,
+} from "@/lib/summary-cache";
+import {
   Check,
   CheckSquare,
   Circle,
@@ -120,6 +124,16 @@ export function SummaryClient({
   const startStreaming = useCallback(async () => {
     if (startedRef.current) return;
     startedRef.current = true;
+
+    // Check in-memory cache first (instant if prefetched on hover)
+    const cached = getCachedSummary(roomId);
+    if (cached) {
+      setTitle(cached.title);
+      setSummaryText(cached.summary);
+      setDone(true);
+      return;
+    }
+
     setStreaming(true);
 
     try {
@@ -139,8 +153,10 @@ export function SummaryClient({
       const contentType = res.headers.get("content-type") ?? "";
       if (contentType.includes("application/json")) {
         const data = await res.json();
-        setTitle(data.title ?? "Meeting Summary");
+        const t = data.title ?? "Meeting Summary";
+        setTitle(t);
         setSummaryText(data.summary);
+        setCachedSummary(roomId, { title: t, summary: data.summary });
         setStreaming(false);
         setDone(true);
         return;
@@ -157,12 +173,20 @@ export function SummaryClient({
       const decoder = new TextDecoder();
       if (!reader) return;
 
+      let fullText = "";
       while (true) {
         const { done: readerDone, value } = await reader.read();
         if (readerDone) break;
         const chunk = decoder.decode(value, { stream: true });
+        fullText += chunk;
         setSummaryText((prev) => prev + chunk);
       }
+
+      // Cache the completed streamed result
+      const finalTitle = headerTitle
+        ? decodeURIComponent(headerTitle)
+        : "Meeting Summary";
+      setCachedSummary(roomId, { title: finalTitle, summary: fullText });
 
       setStreaming(false);
       setDone(true);
@@ -368,11 +392,11 @@ export function SummaryClient({
         )}
 
         {/* Footer */}
-        <div className="pt-4 border-t border-border">
+        <div className="pt-4 border-t border-border flex items-center gap-2">
           <Link href="/">
-            <Button>
+            <Button variant="outline">
               <Home className="h-4 w-4 mr-2" />
-              Start a new meeting
+              Home
             </Button>
           </Link>
         </div>

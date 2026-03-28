@@ -13,6 +13,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import type { PendingRequest } from "@/hooks/use-admission";
+import { useCurrentUser } from "@/hooks/use-current-user";
 import { useUser } from "@clerk/nextjs";
 import {
   useDaily,
@@ -90,6 +91,7 @@ export function CallControls({
   const [ending, setEnding] = useState(false);
   const [leaving, setLeaving] = useState(false);
   const { isSignedIn } = useUser();
+  const { fingerprintId } = useCurrentUser();
 
   const {
     cameras,
@@ -125,6 +127,7 @@ export function CallControls({
         headers,
         body: JSON.stringify({
           username: daily?.participants()?.local?.user_name,
+          fingerprintId,
         }),
       });
       const data = await res.json();

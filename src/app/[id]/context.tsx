@@ -1,6 +1,7 @@
 "use client";
 
 import type { MediaSettings } from "@/components/media-preview";
+import { useCurrentUser } from "@/hooks/use-current-user";
 import { createContext, useContext, useCallback, useState } from "react";
 
 // ── State machine ──────────────────────────────────────────────
@@ -23,6 +24,7 @@ interface RoomContextValue {
 	isOwner: boolean;
 	ownerSecret: string | null;
 	roomId: string;
+	fingerprintId: string | null;
 	joinRoom: () => Promise<void>;
 	cancelWaiting: () => void;
 	onAdmissionAccepted: () => void;
@@ -55,6 +57,7 @@ export function RoomProvider({ roomId, children }: RoomProviderProps) {
 		selectedCamId: "",
 		selectedMicId: "",
 	});
+	const { fingerprintId } = useCurrentUser();
 
 	const [ownerSecret, setOwnerSecret] = useState<string | null>(() =>
 		typeof window !== "undefined"
@@ -94,7 +97,10 @@ export function RoomProvider({ roomId, children }: RoomProviderProps) {
 			const res = await fetch(`/api/r/${roomId}/join`, {
 				method: "POST",
 				headers,
-				body: JSON.stringify({ username: effectiveUsername }),
+				body: JSON.stringify({
+					username: effectiveUsername,
+					fingerprintId,
+				}),
 			});
 
 			if (res.status === 410) {
@@ -117,7 +123,7 @@ export function RoomProvider({ roomId, children }: RoomProviderProps) {
 				message: "Could not join the room. Check the code and try again.",
 			});
 		}
-	}, [effectiveUsername, roomId, ownerSecret]);
+	}, [effectiveUsername, roomId, ownerSecret, fingerprintId]);
 
 	const cancelWaiting = useCallback(() => {
 		setState({ status: "preview" });
@@ -143,6 +149,7 @@ export function RoomProvider({ roomId, children }: RoomProviderProps) {
 				isOwner,
 				ownerSecret,
 				roomId,
+				fingerprintId,
 				joinRoom,
 				cancelWaiting,
 				onAdmissionAccepted,

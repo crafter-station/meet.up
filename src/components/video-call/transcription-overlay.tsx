@@ -353,11 +353,11 @@ export function TranscriptionOverlay({
     () =>
       query
         ? transcriptMessages.filter(
-            normalize(m.content).includes(query) ||
+            (m) =>
+              normalize(m.content).includes(query) ||
               normalize(m.username).includes(query),
           )
         : transcriptMessages,
-
     [transcriptMessages, query],
   );
 

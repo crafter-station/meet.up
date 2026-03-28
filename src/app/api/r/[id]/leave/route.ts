@@ -11,7 +11,7 @@ export async function POST(
 	{ params }: { params: Promise<{ id: string }> },
 ) {
 	const { id } = await params;
-	const { username } = await req.json();
+	const { username, fingerprintId } = await req.json();
 	const ownerSecret = req.headers.get("x-owner-secret");
 	const { userId: clerkUserId } = await auth();
 
@@ -25,8 +25,9 @@ export async function POST(
 
 	const isOwner = checkIsOwner(ownerSecret, clerkUserId, room);
 
-	// Mark participant as left
-	const participantId = `${username}_${room.id}`;
+	// Mark participant as left — use fingerprint-based ID if available
+	const stableId = fingerprintId ?? username;
+	const participantId = `${stableId}_${room.id}`;
 	await db
 		.update(participants)
 		.set({ leftAt: new Date() })

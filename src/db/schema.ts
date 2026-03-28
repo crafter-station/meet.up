@@ -1,5 +1,11 @@
 import { boolean, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
 
+export const anonymousUsers = pgTable("anonymous_users", {
+	id: text("id").primaryKey(), // fingerprint visitorId
+	username: text("username").notNull(),
+	createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
 export const rooms = pgTable("rooms", {
 	id: uuid("id").defaultRandom().primaryKey(),
 	dailyRoomName: text("daily_room_name").notNull().unique(),
@@ -10,15 +16,17 @@ export const rooms = pgTable("rooms", {
 	autoAccept: boolean("auto_accept").notNull().default(true),
 	ownerSecretHash: text("owner_secret_hash").notNull(),
 	ownerClerkUserId: text("owner_clerk_user_id"),
+	ownerFingerprintId: text("owner_fingerprint_id"),
 });
 
 export const participants = pgTable("participants", {
-	id: text("id").primaryKey(), // `${visitorId}_${roomId}`
+	id: text("id").primaryKey(), // `${fingerprintId}_${roomId}` or `${username}_${roomId}`
 	roomId: uuid("room_id")
 		.references(() => rooms.id)
 		.notNull(),
 	username: text("username").notNull(),
 	clerkUserId: text("clerk_user_id"),
+	fingerprintId: text("fingerprint_id"),
 	joinedAt: timestamp("joined_at").defaultNow().notNull(),
 	leftAt: timestamp("left_at"),
 });
@@ -59,5 +67,6 @@ export const meetingSummaries = pgTable("meeting_summaries", {
 	keyTopics: text("key_topics").notNull(),
 	actionItems: text("action_items").notNull(),
 	decisions: text("decisions").notNull(),
+	isPublic: boolean("is_public").notNull().default(false),
 	createdAt: timestamp("created_at").defaultNow().notNull(),
 });

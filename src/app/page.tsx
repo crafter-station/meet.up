@@ -1,5 +1,7 @@
 "use client";
 
+import { getUserMeetings } from "@/app/actions";
+import { useCurrentUser } from "@/hooks/use-current-user";
 import { useUser, UserButton } from "@clerk/nextjs";
 import { notify } from "@/lib/notify";
 import { Button } from "@/components/ui/button";
@@ -17,12 +19,14 @@ import {
 	Check,
 	ChevronDown,
 	ChevronRight,
+	Clock,
 	LogIn,
 	MessageSquare,
 	Mic,
 	PenLine,
 	Plus,
 	Sparkles,
+	Users,
 	Video,
 	Zap,
 } from "lucide-react";
@@ -421,13 +425,27 @@ function FaqItem({ question, answer }: { question: string; answer: string }) {
 }
 
 /* ─── Page ─── */
+type Meeting = {
+	roomId: string;
+	dailyRoomName: string;
+	createdAt: number;
+	endedAt: number | null;
+	isLive: boolean;
+	title: string | null;
+	summary: string | null;
+	participantNames: string[];
+	participantCount: number;
+};
+
 export default function Home() {
 	const router = useRouter();
 	const { isSignedIn } = useUser();
+	const { fingerprintId, clerkId, isLoading: identityLoading } = useCurrentUser();
 	const [roomCode, setRoomCode] = useState("");
 	const [creating, setCreating] = useState(false);
 	const [joinOpen, setJoinOpen] = useState(false);
 	const [yOffset, setYOffset] = useState(0);
+	const [meetings, setMeetings] = useState<Meeting[]>([]);
 
 	useEffect(() => {
 		const onScroll = () => {
@@ -437,10 +455,24 @@ export default function Home() {
 		return () => window.removeEventListener("scroll", onScroll);
 	}, []);
 
+	// Fetch user's meetings once identity is available
+	useEffect(() => {
+		if (identityLoading) return;
+		if (!fingerprintId && !clerkId) return;
+
+		getUserMeetings(fingerprintId, clerkId ?? null).then(({ meetings }) => {
+			setMeetings(meetings as Meeting[]);
+		});
+	}, [identityLoading, fingerprintId, clerkId]);
+
 	const createRoom = async () => {
 		setCreating(true);
 		try {
-			const res = await fetch("/api/r", { method: "POST" });
+			const res = await fetch("/api/r", {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({ fingerprintId }),
+			});
 			if (!res.ok) throw new Error("Failed to create room");
 			const { id, ownerSecret } = await res.json();
 			sessionStorage.setItem(`ownerSecret:${id}`, ownerSecret);
@@ -631,6 +663,73 @@ export default function Home() {
 					</div>
 				</div>
 			</section>
+
+			{/* ─── My Meetings ─── */}
+			{meetings.length > 0 && (
+				<section className="relative z-20 py-20 border-t border-border/30">
+					<div className="w-full flex justify-center px-6">
+						<div className="w-full max-w-5xl">
+							<motion.div
+								{...fadeUp}
+								transition={{ duration: 0.6 }}
+								className="flex items-center justify-between mb-8"
+							>
+								<h2
+									className="text-xl font-semibold tracking-tight"
+									style={{ letterSpacing: "-0.02em" }}
+								>
+									My Meetings
+								</h2>
+								<span className="text-xs text-muted-foreground">
+									{meetings.length} meeting{meetings.length !== 1 ? "s" : ""}
+								</span>
+							</motion.div>
+
+							<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+								{meetings.slice(0, 6).map((meeting, i) => (
+									<motion.a
+										key={meeting.roomId}
+										href={meeting.isLive ? `/${meeting.dailyRoomName}` : `/summary/${meeting.dailyRoomName}`}
+										{...fadeUp}
+										transition={{ duration: 0.4, delay: i * 0.05 }}
+										className="group rounded-xl border border-border/40 hover:border-border/70 bg-card/20 hover:bg-card/40 p-4 transition-all cursor-pointer block"
+									>
+										<div className="flex items-start justify-between mb-2">
+											<h3 className="text-sm font-medium text-foreground truncate flex-1 mr-2">
+												{meeting.title ?? meeting.dailyRoomName}
+											</h3>
+											{meeting.isLive && (
+												<span className="flex items-center gap-1 text-[10px] text-emerald-400 shrink-0">
+													<span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+													Live
+												</span>
+											)}
+										</div>
+										{meeting.summary && (
+											<p className="text-xs text-muted-foreground line-clamp-2 mb-3">
+												{meeting.summary}
+											</p>
+										)}
+										<div className="flex items-center gap-3 text-[11px] text-muted-foreground/60">
+											<span className="flex items-center gap-1">
+												<Users className="w-3 h-3" />
+												{meeting.participantCount}
+											</span>
+											<span className="flex items-center gap-1">
+												<Clock className="w-3 h-3" />
+												{new Date(meeting.createdAt).toLocaleDateString(undefined, {
+													month: "short",
+													day: "numeric",
+												})}
+											</span>
+										</div>
+									</motion.a>
+								))}
+							</div>
+						</div>
+					</div>
+				</section>
+			)}
 
 			{/* ─── Feature Cards ─── */}
 			<section className="relative z-20 py-32">

@@ -3,14 +3,22 @@
 import { MessageResponse } from "@/components/ai-elements/message";
 import { Button } from "@/components/ui/button";
 import {
+  getCachedSummary,
+  setCachedSummary,
+} from "@/lib/summary-cache";
+import { toggleSummaryVisibility } from "@/app/actions";
+import {
   Check,
   CheckSquare,
   Circle,
   CircleCheck,
   Clock,
   Copy,
+  Globe,
   Home,
+  Link2,
   Loader2,
+  Lock,
   PenLine,
   Sparkles,
   Users,
@@ -71,6 +79,7 @@ interface SummaryClientProps {
     content: string;
     isDone: boolean;
   }[];
+  isPublic?: boolean;
 }
 
 export function SummaryClient({
@@ -81,9 +90,13 @@ export function SummaryClient({
   artifacts,
   notes,
   actionItems,
+  isPublic: initialIsPublic = false,
 }: SummaryClientProps) {
   const [title, setTitle] = useState("");
   const [summaryText, setSummaryText] = useState("");
+  const [isPublic, setIsPublic] = useState(initialIsPublic);
+  const [toggling, setToggling] = useState(false);
+  const [linkCopied, setLinkCopied] = useState(false);
   const [streaming, setStreaming] = useState(false);
   const [done, setDone] = useState(false);
   const startedRef = useRef(false);
@@ -120,6 +133,16 @@ export function SummaryClient({
   const startStreaming = useCallback(async () => {
     if (startedRef.current) return;
     startedRef.current = true;
+
+    // Check in-memory cache first (instant if prefetched on hover)
+    const cached = getCachedSummary(roomId);
+    if (cached) {
+      setTitle(cached.title);
+      setSummaryText(cached.summary);
+      setDone(true);
+      return;
+    }
+
     setStreaming(true);
 
     try {
@@ -139,8 +162,10 @@ export function SummaryClient({
       const contentType = res.headers.get("content-type") ?? "";
       if (contentType.includes("application/json")) {
         const data = await res.json();
-        setTitle(data.title ?? "Meeting Summary");
+        const t = data.title ?? "Meeting Summary";
+        setTitle(t);
         setSummaryText(data.summary);
+        setCachedSummary(roomId, { title: t, summary: data.summary });
         setStreaming(false);
         setDone(true);
         return;
@@ -157,12 +182,20 @@ export function SummaryClient({
       const decoder = new TextDecoder();
       if (!reader) return;
 
+      let fullText = "";
       while (true) {
         const { done: readerDone, value } = await reader.read();
         if (readerDone) break;
         const chunk = decoder.decode(value, { stream: true });
+        fullText += chunk;
         setSummaryText((prev) => prev + chunk);
       }
+
+      // Cache the completed streamed result
+      const finalTitle = headerTitle
+        ? decodeURIComponent(headerTitle)
+        : "Meeting Summary";
+      setCachedSummary(roomId, { title: finalTitle, summary: fullText });
 
       setStreaming(false);
       setDone(true);
@@ -234,7 +267,55 @@ export function SummaryClient({
               </div>
             )}
           </div>
-        </div>
+
+          {/* Visibility & share controls */}
+          <div className="flex items-center gap-2 pt-1">
+            <button
+              type="button"
+              className="flex items-center gap-1.5 rounded-full border border-border/30 px-3 py-1 text-xs transition-colors hover:bg-muted/30 disabled:opacity-50"
+              disabled={toggling}
+              onClick={async () => {
+                setToggling(true);
+                const result = await toggleSummaryVisibility(roomId, !isPublic);
+                if ("isPublic" in result) setIsPublic(result.isPublic ?? false);
+                setToggling(false);
+              }}
+            >
+              {isPublic ? (
+                <>
+                  <Globe className="h-3 w-3 text-emerald-400" />
+                  <span className="text-emerald-400">Public</span>
+                </>
+              ) : (
+                <>
+                  <Lock className="h-3 w-3 text-muted-foreground" />
+                  <span className="text-muted-foreground">Private</span>
+                </>
+              )}
+            </button>
+            <button
+              type="button"
+              className="flex items-center gap-1.5 rounded-full border border-border/30 px-3 py-1 text-xs text-muted-foreground transition-colors hover:bg-muted/30"
+              onClick={() => {
+                navigator.clipboard.writeText(window.location.href);
+                setLinkCopied(true);
+                setTimeout(() => setLinkCopied(false), 2000);
+              }}
+            >
+              {linkCopied ? (
+                <>
+                  <Check className="h-3 w-3 text-emerald-400" />
+                  <span className="text-emerald-400">Copied!</span>
+                </>
+              ) : (
+                <>
+                  <Link2 className="h-3 w-3" />
+                  Copy link
+                </>
+              )}
+            </button>
+          </div>
+          </div>
 
         {/* Streaming summary */}
         <div className="space-y-2">
@@ -368,11 +449,11 @@ export function SummaryClient({
         )}
 
         {/* Footer */}
-        <div className="pt-4 border-t border-border">
+        <div className="pt-4 border-t border-border flex items-center gap-2">
           <Link href="/">
-            <Button>
+            <Button variant="outline">
               <Home className="h-4 w-4 mr-2" />
-              Start a new meeting
+              Home
             </Button>
           </Link>
         </div>

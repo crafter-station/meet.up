@@ -1,5 +1,7 @@
 "use client";
 
+import { getOrCreateUser } from "@/app/actions";
+import { useCurrentUser } from "@/hooks/use-current-user";
 import { useUser } from "@clerk/nextjs";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -23,15 +25,25 @@ export function PreviewView() {
 	const { state, username, setUsername, setMediaSettings, joinRoom, roomId } =
 		useRoomContext();
 	const { isSignedIn, isLoaded, user } = useUser();
+	const { fingerprintId, isLoading: identityLoading } = useCurrentUser();
 	const effectiveUsername = username.trim();
 	const isJoining = state.status === "joining";
 
+	// Auto-fill username from Clerk or anonymous user record
 	useEffect(() => {
 		if (isLoaded && isSignedIn && user) {
 			const name = getDisplayName(user);
 			if (name) setUsername(name);
 		}
 	}, [isLoaded, isSignedIn, user, setUsername]);
+
+	useEffect(() => {
+		if (isLoaded && !isSignedIn && fingerprintId && !username) {
+			getOrCreateUser(fingerprintId).then((anonUser) => {
+				if (anonUser?.username) setUsername(anonUser.username);
+			});
+		}
+	}, [isLoaded, isSignedIn, fingerprintId, username, setUsername]);
 
 	const handleJoin = (e: React.FormEvent) => {
 		e.preventDefault();

@@ -25,6 +25,7 @@ import {
 	Mic,
 	PenLine,
 	Plus,
+	Settings,
 	Sparkles,
 	Users,
 	Video,
@@ -85,7 +86,15 @@ function Navbar({
 				</div>
 				<div className="flex items-center gap-2">
 					{isSignedIn ? (
-						<UserButton />
+						<>
+							<Link
+								href="/settings"
+								className="text-muted-foreground hover:text-foreground transition-colors"
+							>
+								<Settings className="h-4 w-4" />
+							</Link>
+							<UserButton />
+						</>
 					) : (
 						<>
 							<Link href="/sign-in">

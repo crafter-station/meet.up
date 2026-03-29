@@ -3,12 +3,15 @@
 import { useAdmission } from "@/hooks/use-admission";
 import { useRealtimeChat } from "@/hooks/use-realtime-chat";
 import { useTranscription } from "@/hooks/use-transcription";
+import { useVoiceActions } from "@/hooks/use-voice-actions";
+import { Button } from "@/components/ui/button";
 import {
 	DailyAudio,
 	useActiveSpeakerId,
 	useParticipantIds,
 } from "@daily-co/daily-react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { Check, Loader2, X } from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { CallControls } from "./call-controls";
 import { MeetingFeed } from "./meeting-feed";
 import { ParticipantTile } from "./participant-tile";
@@ -35,6 +38,7 @@ export function CallUI({
 	const activeSpeakerId = useActiveSpeakerId();
 	const [showPanel, setShowPanel] = useState(true);
 	const [mobileTranscriptionOpen, setMobileTranscriptionOpen] = useState(true);
+	const [voiceActionsEnabled, setVoiceActionsEnabled] = useState(true);
 
 	// Keep screen awake during the call
 	useEffect(() => {
@@ -101,6 +105,36 @@ export function CallUI({
 			onOwnershipReceived,
 		});
 
+	// Fetch voice actions setting on mount
+	useEffect(() => {
+		fetch(`/api/r/${roomId}/settings`)
+			.then((res) => res.json())
+			.then((data) => {
+				if (data.voiceActionsEnabled !== undefined)
+					setVoiceActionsEnabled(data.voiceActionsEnabled);
+			})
+			.catch(() => {});
+	}, [roomId]);
+
+	// Build transcript text for voice actions
+	const transcriptText = useMemo(() => {
+		const msgs = messages.filter((m) => m.type === "transcript");
+		return msgs.map((m) => `${m.username}: ${m.content}`).join("\n");
+	}, [messages]);
+
+	const onVoiceActionExecuted = useCallback(
+		(summary: string) => void sendAs(summary, "meet.up AI"),
+		[sendAs],
+	);
+
+	const { pendingAction, executing, acceptAction, rejectAction } =
+		useVoiceActions({
+			transcriptText,
+			roomId,
+			enabled: voiceActionsEnabled,
+			onExecuted: onVoiceActionExecuted,
+		});
+
 	// Merge local partial with remote partials
 	const allPartials: Record<string, string> = { ...partialTexts };
 	if (partialText) {
@@ -116,6 +150,43 @@ export function CallUI({
 		<div className="flex h-full w-full flex-col">
 			<DailyAudio />
 			<div className="relative flex flex-1 overflow-hidden">
+				{/* Voice action proposal */}
+				{pendingAction && (
+					<div className="absolute top-3 left-1/2 -translate-x-1/2 z-50 w-[90%] max-w-md">
+						<div className="rounded-lg border border-primary/30 bg-background p-4 shadow-2xl">
+							<p className="text-xs font-semibold text-primary mb-1">
+								Voice Action Detected
+							</p>
+							<p className="text-sm text-foreground mb-3">
+								{pendingAction.proposal}
+							</p>
+							<div className="flex gap-2 justify-end">
+								<Button
+									size="sm"
+									variant="outline"
+									onClick={rejectAction}
+									disabled={executing}
+								>
+									<X className="h-4 w-4 mr-1" />
+									Reject
+								</Button>
+								<Button
+									size="sm"
+									onClick={() => void acceptAction()}
+									disabled={executing}
+								>
+									{executing ? (
+										<Loader2 className="h-4 w-4 mr-1 animate-spin" />
+									) : (
+										<Check className="h-4 w-4 mr-1" />
+									)}
+									Accept
+								</Button>
+							</div>
+						</div>
+					</div>
+				)}
+
 				{/* Video Grid */}
 				<div className="flex-1 p-3">
 					<div
@@ -132,6 +203,7 @@ export function CallUI({
 				</div>
 				<TranscriptionOverlay
 					username={username}
+					roomId={roomId}
 					partialTexts={allPartials}
 					messages={messages}
 					mobileOpen={mobileTranscriptionOpen}
@@ -187,6 +259,8 @@ export function CallUI({
 				onRejectUser={rejectUser}
 				onLeaveCall={onLeaveCall}
 				onBroadcastOwnershipTransfer={broadcastOwnershipTransfer}
+			voiceActionsEnabled={voiceActionsEnabled}
+			onVoiceActionsChange={setVoiceActionsEnabled}
 			/>
 		</div>
 	);

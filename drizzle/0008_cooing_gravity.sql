@@ -1,0 +1,1 @@
+ALTER TABLE "rooms" ALTER COLUMN "auto_accept" SET DEFAULT false;

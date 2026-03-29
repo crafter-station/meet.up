@@ -18,6 +18,7 @@ export function WaitingView() {
 		onAdmissionAccepted,
 		onAdmissionRejected,
 		markMeetingEnded,
+		markRoomFull,
 	} = useRoomContext();
 
 	const { requestAdmission, cancelRequest } = useAdmission({
@@ -67,6 +68,12 @@ export function WaitingView() {
 					body: JSON.stringify({ username: name, fingerprintId }),
 				});
 				if (res.status === 410) markMeetingEnded();
+				if (res.status === 403) {
+					try {
+						const data = await res.json();
+						if (data.status === "room_full") markRoomFull();
+					} catch { /* ignore parse errors */ }
+				}
 			} catch {
 				/* ignore transient network errors */
 			}
@@ -76,7 +83,7 @@ export function WaitingView() {
 		void checkEnded();
 
 		return () => window.clearInterval(id);
-	}, [roomId, username, fingerprintId, markMeetingEnded]);
+	}, [roomId, username, fingerprintId, markMeetingEnded, markRoomFull]);
 
 	return (
 		<div className="flex flex-1 flex-col items-center justify-center gap-4 px-4">

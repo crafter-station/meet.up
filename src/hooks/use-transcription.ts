@@ -147,47 +147,20 @@ export function useTranscription({
 		}
 	}, [isMuted, enabled, scribe, connectScribe, emitChunks]);
 
-	// Watch partial text for sentence boundaries (period detection).
-	// Complete sentences are emitted immediately so they are "locked in"
-	// and can never be overwritten or lost by later SDK updates.
+	// Display partial text live (for the overlay) but do NOT emit messages from
+	// partials. Scribe revises partial text as it hears more context, so emitting
+	// early causes duplicate messages. Messages are only created from committed
+	// transcripts below.
 	useEffect(() => {
 		if (!enabled) return;
-		const partial = scribe.partialTranscript;
-		if (!partial) {
-			displayPartialRef.current = "";
-			setDisplayPartial("");
-			onPartialRef.current("");
-			return;
-		}
+		const partial = scribe.partialTranscript ?? "";
+		displayPartialRef.current = partial;
+		setDisplayPartial(partial);
+		onPartialRef.current(partial);
+	}, [enabled, scribe.partialTranscript]);
 
-		// Find the last sentence boundary: ". " or trailing "."
-		let splitAt = -1;
-		const lastPeriodSpace = partial.lastIndexOf(". ");
-		if (lastPeriodSpace !== -1) splitAt = lastPeriodSpace + 1;
-		if (partial.endsWith(".")) splitAt = partial.length;
-
-		if (splitAt === -1) {
-			// No complete sentence yet — show the full partial
-			displayPartialRef.current = partial;
-			setDisplayPartial(partial);
-			onPartialRef.current(partial);
-			return;
-		}
-
-		const completePart = partial.slice(0, splitAt).trim();
-		const tail = partial.slice(splitAt).trim();
-
-		if (completePart) emitChunks(completePart);
-
-		// Only the incomplete tail remains as the live partial
-		displayPartialRef.current = tail;
-		setDisplayPartial(tail);
-		onPartialRef.current(tail);
-	}, [enabled, scribe.partialTranscript, emitChunks]);
-
-	// Handle SDK committed transcripts as a safety net.
-	// Most sentences will already have been emitted via period detection;
-	// the emittedRef Set deduplicates so nothing is doubled.
+	// Handle SDK committed transcripts — the only source of truth for messages.
+	// Committed transcripts are stable and won't be revised by Scribe.
 	useEffect(() => {
 		if (!enabled) return;
 		for (const segment of scribe.committedTranscripts) {

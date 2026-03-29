@@ -7,6 +7,7 @@ import { WaitingView } from "./views/waiting-view";
 import { InCallView } from "./views/in-call-view";
 import { RejectedView } from "./views/rejected-view";
 import { EndedView } from "./views/ended-view";
+import { RoomFullView } from "./views/room-full-view";
 
 export default function RoomPage() {
 	const { id } = useParams<{ id: string }>();
@@ -34,5 +35,7 @@ function RoomRouter() {
 			return <RejectedView />;
 		case "ended":
 			return <EndedView />;
+		case "room-full":
+			return <RoomFullView />;
 	}
 }

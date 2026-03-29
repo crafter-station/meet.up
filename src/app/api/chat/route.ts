@@ -8,8 +8,14 @@ import {
   stepCountIs,
   type UIMessage,
 } from "ai";
-import { tools } from "./tools";
-import { googleCalendarTools } from "./tools/google-calendar";
+import {
+  tools,
+  getCurrentMeetingCodeTool,
+  getCurrentTimeTool,
+  getMeetingParticipantEmailsTool,
+  googleCalendarTools,
+  scheduleMeetingTool,
+} from "./tools";
 import { getSystemPrompt } from "./prompt";
 
 type MCPClient = Awaited<ReturnType<typeof createMCPClient>>;
@@ -60,6 +66,7 @@ export async function POST(req: Request) {
     const body = await req.json();
     const messages = body.messages as UIMessage[];
     const transcript = body.transcript as string | undefined;
+    const roomId = body.roomId as string | undefined;
 
     const modelMessages = await convertToModelMessages(messages);
 
@@ -78,9 +85,19 @@ export async function POST(req: Request) {
       }
     }
 
+    let meetingToolset: Record<string, unknown> | null = null;
+    if (userId && roomId) {
+      meetingToolset = {
+        ...getCurrentMeetingCodeTool(roomId),
+        ...getMeetingParticipantEmailsTool(),
+        ...scheduleMeetingTool(),
+      };
+    }
+
     const basePrompt = getSystemPrompt({
       hasGitHub: !!github,
       hasGoogleCalendar: !!googleCalendar,
+      hasMeetingTools: !!meetingToolset,
     });
     const system = transcript
       ? `${basePrompt}\n\n--- MEETING TRANSCRIPTION ---\n${transcript}\n--- END TRANSCRIPTION ---`
@@ -90,7 +107,7 @@ export async function POST(req: Request) {
       model: gateway("anthropic/claude-sonnet-4-6"),
       system,
       messages: modelMessages,
-      tools: { ...tools(), ...github?.tools, ...googleCalendar },
+      tools: { ...tools(), ...getCurrentTimeTool(), ...github?.tools, ...googleCalendar, ...meetingToolset },
       stopWhen: stepCountIs(5),
       onFinish: async () => {
         await github?.client.close();

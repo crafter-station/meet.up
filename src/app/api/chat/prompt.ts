@@ -43,12 +43,24 @@ You have access to Google Calendar tools via the user's connected account. You c
 
 When the user asks about their schedule, upcoming meetings, or wants to create/modify calendar events, use the available Google Calendar tools directly. Always confirm event details (especially date/time and attendees) before creating or modifying events. When displaying events, format dates and times clearly.`;
 
+const meetingToolsPrompt = `
+
+Meeting Tools:
+You have access to meeting management tools. You can:
+- Get the current meeting's room code and shareable link (getCurrentMeetingCode)
+- Look up email addresses of authenticated participants in any meeting (getMeetingParticipantEmails)
+- Schedule new meetings and automatically send invitation emails to attendees (scheduleNewMeeting)
+
+When the user asks to schedule a follow-up meeting, use scheduleNewMeeting. If they want to email participants or need their contact info, first use getCurrentMeetingCode to get the room code, then getMeetingParticipantEmails to get their emails. Always confirm meeting details (date/time, attendees) before scheduling.`;
+
 export function getSystemPrompt(options: {
 	hasGitHub: boolean;
 	hasGoogleCalendar: boolean;
+	hasMeetingTools: boolean;
 }): string {
 	let prompt = basePrompt;
 	if (options.hasGitHub) prompt += githubPrompt;
 	if (options.hasGoogleCalendar) prompt += googleCalendarPrompt;
+	if (options.hasMeetingTools) prompt += meetingToolsPrompt;
 	return prompt;
 }

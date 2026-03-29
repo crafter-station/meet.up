@@ -140,6 +140,7 @@ const DEFAULT_SUGGESTIONS = [
 
 interface TranscriptionOverlayProps {
   username: string;
+  roomId: string;
   partialTexts: Record<string, string>;
   messages: ChatMessage[];
   mobileOpen?: boolean;
@@ -156,6 +157,7 @@ interface TranscriptionOverlayProps {
 
 export function TranscriptionOverlay({
   username,
+  roomId,
   partialTexts,
   messages,
   mobileOpen = false,
@@ -273,9 +275,9 @@ export function TranscriptionOverlay({
     () =>
       new DefaultChatTransport({
         api: "/api/chat",
-        body: () => ({ transcript: transcriptRef.current }),
+        body: () => ({ transcript: transcriptRef.current, roomId }),
       }),
-    [],
+    [roomId],
   );
 
   const {
@@ -1079,6 +1081,10 @@ export function TranscriptionOverlay({
 // ── Tool name formatting ────────────────────────────────────────
 const TOOL_LABELS: Record<string, string> = {
   webSearch: "Web Search",
+  getCurrentTime: "Current Time",
+  getCurrentMeetingCode: "Meeting Code",
+  getMeetingParticipantEmails: "Participant Emails",
+  scheduleNewMeeting: "Schedule Meeting",
 };
 
 function formatToolName(toolName: string): string {

@@ -4,6 +4,7 @@ import { endMeetingQuick } from "@/app/actions";
 import { notify } from "@/lib/notify";
 import { CamToggle, MicToggle } from "@/components/media-toggles";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import {
   Dialog,
@@ -51,6 +52,8 @@ interface CallControlsProps {
     newOwner: string,
     newOwnerSecret: string,
   ) => void;
+  voiceActionsEnabled: boolean;
+  onVoiceActionsChange: (enabled: boolean) => void;
 }
 
 export function CallControls({
@@ -68,6 +71,8 @@ export function CallControls({
   onRejectUser,
   onLeaveCall,
   onBroadcastOwnershipTransfer,
+  voiceActionsEnabled,
+  onVoiceActionsChange,
 }: CallControlsProps) {
   const daily = useDaily();
   const localSessionId = useLocalSessionId();
@@ -327,7 +332,7 @@ export function CallControls({
               onAccept={onAcceptUser}
               onReject={onRejectUser}
             />
-            <SettingsDialog roomId={roomId} ownerSecret={ownerSecret!} />
+            <SettingsDialog roomId={roomId} ownerSecret={ownerSecret!} voiceActionsEnabled={voiceActionsEnabled} onVoiceActionsChange={onVoiceActionsChange} />
           </div>
           <FloatingMenu
             className="md:hidden"
@@ -353,7 +358,7 @@ export function CallControls({
               onAccept={onAcceptUser}
               onReject={onRejectUser}
             />
-            <SettingsDialog roomId={roomId} ownerSecret={ownerSecret!} />
+            <SettingsDialog roomId={roomId} ownerSecret={ownerSecret!} voiceActionsEnabled={voiceActionsEnabled} onVoiceActionsChange={onVoiceActionsChange} />
           </FloatingMenu>
         </>
       )}
@@ -474,18 +479,28 @@ function RequestsDialog({
 function SettingsDialog({
   roomId,
   ownerSecret,
+  voiceActionsEnabled,
+  onVoiceActionsChange,
 }: {
   roomId: string;
   ownerSecret: string;
+  voiceActionsEnabled: boolean;
+  onVoiceActionsChange: (enabled: boolean) => void;
 }) {
-  const [autoAccept, setAutoAccept] = useState(true);
+  const [autoAccept, setAutoAccept] = useState(false);
+  const [participantLimit, setParticipantLimit] = useState(5);
   const [loading, setLoading] = useState(false);
 
-  // Fetch current setting on mount
   useEffect(() => {
-    // The setting defaults to true; no dedicated GET endpoint, so we use the local state.
-    // It stays in sync because only the owner can change it.
-  }, []);
+    fetch(`/api/r/${roomId}/settings`)
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.autoAccept !== undefined) setAutoAccept(data.autoAccept);
+        if (data.participantLimit !== undefined) setParticipantLimit(data.participantLimit);
+        if (data.voiceActionsEnabled !== undefined) onVoiceActionsChange(data.voiceActionsEnabled);
+      })
+      .catch(() => {});
+  }, [roomId]);
 
   const updateAutoAccept = async (next: boolean) => {
     setLoading(true);
@@ -503,6 +518,49 @@ function SettingsDialog({
       notify("success", { title: `Auto-accept ${next ? "enabled" : "disabled"}` });
     } catch {
       notify("error", { title: "Failed to update settings" });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const updateVoiceActions = async (next: boolean) => {
+    setLoading(true);
+    try {
+      const res = await fetch(`/api/r/${roomId}/settings`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          "X-Owner-Secret": ownerSecret,
+        },
+        body: JSON.stringify({ voiceActionsEnabled: next }),
+      });
+      if (!res.ok) throw new Error();
+      onVoiceActionsChange(next);
+      notify("success", { title: `Voice actions ${next ? "enabled" : "disabled"}` });
+    } catch {
+      notify("error", { title: "Failed to update settings" });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const updateParticipantLimit = async (next: number) => {
+    if (!Number.isInteger(next) || next < 1 || next > 100) return;
+    setLoading(true);
+    try {
+      const res = await fetch(`/api/r/${roomId}/settings`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          "X-Owner-Secret": ownerSecret,
+        },
+        body: JSON.stringify({ participantLimit: next }),
+      });
+      if (!res.ok) throw new Error();
+      setParticipantLimit(next);
+      notify("success", { title: `Participant limit set to ${next}` });
+    } catch {
+      notify("error", { title: "Failed to update participant limit" });
     } finally {
       setLoading(false);
     }
@@ -539,6 +597,44 @@ function SettingsDialog({
             onCheckedChange={(checked) => void updateAutoAccept(checked)}
             disabled={loading}
             aria-label="Auto-accept participants"
+          />
+        </div>
+        <div className="flex items-center justify-between py-2">
+          <div className="space-y-0.5">
+            <p className="text-sm font-medium">Participant limit</p>
+            <p className="text-xs text-muted-foreground">
+              Maximum number of people who can join this room.
+            </p>
+          </div>
+          <Input
+            type="number"
+            min={1}
+            max={100}
+            value={participantLimit}
+            onChange={(e) => {
+              const val = parseInt(e.target.value, 10);
+              if (!isNaN(val)) setParticipantLimit(val);
+            }}
+            onBlur={() => void updateParticipantLimit(participantLimit)}
+            disabled={loading}
+            className="w-20 text-center shrink-0"
+            aria-label="Participant limit"
+          />
+        </div>
+        <div className="flex items-center justify-between py-2">
+          <div className="space-y-0.5">
+            <p className="text-sm font-medium">Voice actions</p>
+            <p className="text-xs text-muted-foreground">
+              AI automatically detects and executes actionable requests from the
+              conversation.
+            </p>
+          </div>
+          <Switch
+            className="shrink-0"
+            checked={voiceActionsEnabled}
+            onCheckedChange={(checked) => void updateVoiceActions(checked)}
+            disabled={loading}
+            aria-label="Voice actions"
           />
         </div>
       </DialogContent>

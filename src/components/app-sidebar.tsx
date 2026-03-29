@@ -4,6 +4,7 @@ import { getUserMeetings } from "@/app/actions";
 import { useCurrentUser } from "@/hooks/use-current-user";
 import { SignInButton, UserButton } from "@clerk/nextjs";
 import {
+	CalendarPlus,
 	Clock,
 	LogInIcon,
 	Plus,
@@ -12,6 +13,7 @@ import {
 	Users,
 	Video,
 } from "lucide-react";
+import { ScheduleMeetingDialog } from "@/components/schedule-meeting-dialog";
 import { prefetchSummary } from "@/lib/summary-cache";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
@@ -47,6 +49,7 @@ export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
 	const { fingerprintId, clerkId, isAuthenticated, isLoading } =
 		useCurrentUser();
 	const [meetings, setMeetings] = useState<Meeting[]>([]);
+	const [scheduleOpen, setScheduleOpen] = useState(false);
 	const pathname = usePathname();
 	const router = useRouter();
 
@@ -85,6 +88,7 @@ export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
 	const pastMeetings = meetings.filter((m) => !m.isLive);
 
 	return (
+	<>
 		<Sidebar collapsible="offcanvas" {...props}>
 			<SidebarHeader>
 				<SidebarMenu>
@@ -110,6 +114,16 @@ export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
 							<span>New meeting</span>
 						</SidebarMenuButton>
 					</SidebarMenuItem>
+					{isAuthenticated && (
+						<SidebarMenuItem>
+							<SidebarMenuButton
+								onClick={() => setScheduleOpen(true)}
+							>
+								<CalendarPlus className="size-4" />
+								<span>Schedule meeting</span>
+							</SidebarMenuButton>
+						</SidebarMenuItem>
+					)}
 				</SidebarMenu>
 			</SidebarHeader>
 
@@ -231,5 +245,11 @@ export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
 				</SidebarMenu>
 			</SidebarFooter>
 		</Sidebar>
+
+		<ScheduleMeetingDialog
+			open={scheduleOpen}
+			onOpenChange={setScheduleOpen}
+		/>
+	</>
 	);
 }

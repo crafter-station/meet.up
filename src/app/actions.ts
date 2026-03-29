@@ -1,19 +1,26 @@
 "use server";
 
-import { clerkClient } from "@clerk/nextjs/server";
+import { auth, clerkClient } from "@clerk/nextjs/server";
 import { db } from "@/db";
 import {
 	anonymousUsers,
 	feedItems,
+	meetingInvitees,
 	meetingSummaries,
 	messages,
 	participants,
 	rooms,
+	scheduledMeetings,
 } from "@/db/schema";
+import { createDailyRoom } from "@/lib/daily";
 import { generateUsername } from "@/lib/names";
+import { hashSecret } from "@/lib/owner";
 import { emailRepository } from "@/repositories/email-repository";
 import { emailService } from "@/services/email-service";
-import { buildSummaryEmail } from "@/services/email-template";
+import {
+	buildInvitationEmail,
+	buildSummaryEmail,
+} from "@/services/email-template";
 import {
 	generateMeetingSummary,
 	type MeetingSummary,
@@ -527,4 +534,189 @@ export async function toggleSummaryVisibility(
 		.where(eq(meetingSummaries.id, summary.id));
 
 	return { ok: true, isPublic };
+}
+
+// ── Scheduled meetings ─────────────────────────────────────────
+
+export async function searchClerkUsers(query: string) {
+	const { userId } = await auth();
+	if (!userId) return { error: "Unauthorized", users: [] };
+
+	const trimmed = query.trim();
+	if (trimmed.length < 2) return { users: [] };
+
+	const clerk = await clerkClient();
+	const result = await clerk.users.getUserList({
+		query: trimmed,
+		limit: 5,
+	});
+
+	return {
+		users: result.data
+			.filter((u) => u.id !== userId)
+			.map((u) => ({
+				id: u.id,
+				email: u.emailAddresses[0]?.emailAddress ?? null,
+				firstName: u.firstName,
+				lastName: u.lastName,
+				imageUrl: u.imageUrl,
+			})),
+	};
+}
+
+export async function scheduleMeeting(data: {
+	title: string;
+	description?: string;
+	scheduledAt: string;
+	invitees: Array<{ email: string; clerkUserId?: string }>;
+	fingerprintId?: string;
+}) {
+	const { userId } = await auth();
+	if (!userId) return { error: "Unauthorized" };
+
+	const title = data.title.trim();
+	if (!title) return { error: "Title is required" };
+	if (data.invitees.length === 0)
+		return { error: "At least one invitee is required" };
+
+	const scheduledDate = new Date(data.scheduledAt);
+	if (Number.isNaN(scheduledDate.getTime()) || scheduledDate <= new Date())
+		return { error: "Scheduled time must be in the future" };
+
+	// 1. Create Daily room with expiry based on scheduled time
+	const roomCode = nanoid(10);
+	const exp = Math.floor(scheduledDate.getTime() / 1000) + 7200;
+	const room = await createDailyRoom(roomCode, exp);
+	const ownerSecret = nanoid(32);
+
+	// 2. Insert room
+	const [insertedRoom] = await db
+		.insert(rooms)
+		.values({
+			dailyRoomName: room.name,
+			dailyRoomUrl: room.url,
+			expiresAt: new Date(scheduledDate.getTime() + 2 * 60 * 60 * 1000),
+			ownerSecretHash: hashSecret(ownerSecret),
+			ownerClerkUserId: userId,
+			ownerFingerprintId: data.fingerprintId ?? null,
+		})
+		.returning();
+
+	// 3. Insert scheduled meeting
+	const meetingId = nanoid();
+	await db.insert(scheduledMeetings).values({
+		id: meetingId,
+		roomId: insertedRoom.id,
+		organizerClerkUserId: userId,
+		title,
+		description: data.description?.trim() || null,
+		scheduledAt: scheduledDate,
+	});
+
+	// 4. Get organizer info for email
+	const clerk = await clerkClient();
+	const organizer = await clerk.users.getUser(userId);
+	const organizerName =
+		[organizer.firstName, organizer.lastName].filter(Boolean).join(" ") ||
+		organizer.emailAddresses[0]?.emailAddress ||
+		"Someone";
+
+	// 5. Send invitation emails
+	const baseUrl =
+		process.env.NEXT_PUBLIC_APP_URL ?? `https://${process.env.VERCEL_URL}`;
+	const meetingUrl = `${baseUrl}/${room.name}`;
+
+	for (const invitee of data.invitees) {
+		const inviteeId = nanoid();
+		const html = buildInvitationEmail({
+			organizerName,
+			title,
+			description: data.description?.trim(),
+			scheduledAt: scheduledDate,
+			meetingUrl,
+			roomCode: room.name,
+		});
+		const subject = `${organizerName} invited you: ${title}`;
+
+		let emailSentAt: Date | null = null;
+		try {
+			const result = await emailService.send({
+				to: invitee.email,
+				subject,
+				html,
+			});
+
+			await emailRepository.save({
+				id: nanoid(),
+				roomId: insertedRoom.id,
+				to: invitee.email,
+				subject,
+				htmlBody: html,
+				sentAt: new Date().toISOString(),
+				resendId: result.id,
+			});
+
+			emailSentAt = new Date();
+		} catch (err) {
+			console.error(`Failed to send invite to ${invitee.email}:`, err);
+		}
+
+		await db.insert(meetingInvitees).values({
+			id: inviteeId,
+			scheduledMeetingId: meetingId,
+			email: invitee.email,
+			clerkUserId: invitee.clerkUserId ?? null,
+			emailSentAt,
+		});
+	}
+
+	return {
+		data: {
+			meetingId,
+			roomCode: room.name,
+			roomUrl: room.url,
+			ownerSecret,
+		},
+	};
+}
+
+export async function getScheduledMeetings() {
+	const { userId } = await auth();
+	if (!userId) return { meetings: [] };
+
+	const scheduled = await db.query.scheduledMeetings.findMany({
+		where: eq(scheduledMeetings.organizerClerkUserId, userId),
+		orderBy: (m, { desc: d }) => [d(m.scheduledAt)],
+	});
+
+	if (scheduled.length === 0) return { meetings: [] };
+
+	const results = await Promise.all(
+		scheduled.map(async (sm) => {
+			const room = await db.query.rooms.findFirst({
+				where: eq(rooms.id, sm.roomId),
+			});
+			const invitees = await db.query.meetingInvitees.findMany({
+				where: eq(meetingInvitees.scheduledMeetingId, sm.id),
+			});
+
+			return {
+				id: sm.id,
+				title: sm.title,
+				description: sm.description,
+				scheduledAt: sm.scheduledAt.getTime(),
+				createdAt: sm.createdAt.getTime(),
+				roomCode: room?.dailyRoomName ?? "",
+				roomUrl: room?.dailyRoomUrl ?? "",
+				isLive: room ? !room.endedAt : false,
+				hasEnded: !!room?.endedAt,
+				invitees: invitees.map((inv) => ({
+					email: inv.email,
+					emailSent: !!inv.emailSentAt,
+				})),
+			};
+		}),
+	);
+
+	return { meetings: results };
 }

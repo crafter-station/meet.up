@@ -57,6 +57,29 @@ export const feedItems = pgTable("feed_items", {
 	updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
+export const scheduledMeetings = pgTable("scheduled_meetings", {
+	id: text("id").primaryKey(), // nanoid
+	roomId: uuid("room_id")
+		.references(() => rooms.id)
+		.notNull(),
+	organizerClerkUserId: text("organizer_clerk_user_id").notNull(),
+	title: text("title").notNull(),
+	description: text("description"),
+	scheduledAt: timestamp("scheduled_at").notNull(),
+	createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const meetingInvitees = pgTable("meeting_invitees", {
+	id: text("id").primaryKey(), // nanoid
+	scheduledMeetingId: text("scheduled_meeting_id")
+		.references(() => scheduledMeetings.id)
+		.notNull(),
+	email: text("email").notNull(),
+	clerkUserId: text("clerk_user_id"),
+	emailSentAt: timestamp("email_sent_at"),
+	createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
 export const meetingSummaries = pgTable("meeting_summaries", {
 	id: text("id").primaryKey(),
 	roomId: uuid("room_id")

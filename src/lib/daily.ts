@@ -1,7 +1,7 @@
 const DAILY_API_KEY = process.env.DAILY_API_KEY!;
 const DAILY_API_URL = "https://api.daily.co/v1";
 
-export async function createDailyRoom(name: string) {
+export async function createDailyRoom(name: string, exp?: number) {
 	const res = await fetch(`${DAILY_API_URL}/rooms`, {
 		method: "POST",
 		headers: {
@@ -12,7 +12,7 @@ export async function createDailyRoom(name: string) {
 			name,
 			properties: {
 				max_participants: 10,
-				exp: Math.floor(Date.now() / 1000) + 7200,
+				exp: exp ?? Math.floor(Date.now() / 1000) + 7200,
 				enable_chat: false,
 			},
 		}),

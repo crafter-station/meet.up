@@ -7,6 +7,7 @@ import {
 	Clock,
 	LogInIcon,
 	Plus,
+	Settings,
 	Sparkles,
 	Users,
 	Video,
@@ -197,6 +198,17 @@ export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
 			<SidebarSeparator />
 			<SidebarFooter>
 				<SidebarMenu>
+					{isAuthenticated && (
+						<SidebarMenuItem>
+							<SidebarMenuButton
+								render={<Link href="/settings" />}
+								isActive={pathname === "/settings"}
+							>
+								<Settings className="size-4" />
+								<span>Settings</span>
+							</SidebarMenuButton>
+						</SidebarMenuItem>
+					)}
 					<SidebarMenuItem>
 						{isAuthenticated ? (
 							<div className="flex items-center gap-2 px-2 py-1.5">

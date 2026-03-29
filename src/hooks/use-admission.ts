@@ -1,5 +1,6 @@
 "use client";
 
+import { playAdmissionRequestSound } from "@/lib/notify";
 import { getSupabaseClient } from "@/lib/supabase";
 import { useCallback, useEffect, useRef, useState } from "react";
 
@@ -37,6 +38,9 @@ export function useAdmission({
 	onOwnershipReceived,
 }: UseAdmissionOptions) {
 	const [pendingRequests, setPendingRequests] = useState<PendingRequest[]>([]);
+	const pendingRequestsRef = useRef<PendingRequest[]>([]);
+	const savedTabTitleRef = useRef<string | null>(null);
+	const tabTitleIntervalRef = useRef<number | null>(null);
 	const [waitingStatus, setWaitingStatus] = useState<
 		"idle" | "waiting" | "accepted" | "rejected"
 	>("idle");
@@ -52,6 +56,73 @@ export function useAdmission({
 	onOwnershipReceivedRef.current = onOwnershipReceived;
 
 	useEffect(() => {
+		pendingRequestsRef.current = pendingRequests;
+	}, [pendingRequests]);
+
+	// Host: draw attention via document title (works when the tab is in the background).
+	useEffect(() => {
+		if (typeof document === "undefined") return;
+
+		const clearBlink = () => {
+			if (tabTitleIntervalRef.current != null) {
+				clearInterval(tabTitleIntervalRef.current);
+				tabTitleIntervalRef.current = null;
+			}
+		};
+
+		const restoreTitle = () => {
+			clearBlink();
+			if (savedTabTitleRef.current != null) {
+				document.title = savedTabTitleRef.current;
+				savedTabTitleRef.current = null;
+			}
+		};
+
+		if (!isOwner || pendingRequests.length === 0) {
+			restoreTitle();
+			return;
+		}
+
+		const count = pendingRequests.length;
+		if (savedTabTitleRef.current === null) {
+			savedTabTitleRef.current = document.title;
+		}
+		const base = savedTabTitleRef.current;
+		const alertTitle = `(${count}) Waiting to join · ${base}`;
+
+		const startBlinkIfHidden = () => {
+			clearBlink();
+			if (!document.hidden) return;
+			tabTitleIntervalRef.current = window.setInterval(() => {
+				const saved = savedTabTitleRef.current;
+				if (saved == null) return;
+				document.title =
+					document.title === saved ? alertTitle : saved;
+			}, 1200);
+		};
+
+		document.title = alertTitle;
+		startBlinkIfHidden();
+
+		const onVisibilityChange = () => {
+			if (document.hidden) {
+				document.title = alertTitle;
+				startBlinkIfHidden();
+			} else {
+				clearBlink();
+				document.title = base;
+			}
+		};
+
+		document.addEventListener("visibilitychange", onVisibilityChange);
+
+		return () => {
+			document.removeEventListener("visibilitychange", onVisibilityChange);
+			restoreTitle();
+		};
+	}, [isOwner, pendingRequests]);
+
+	useEffect(() => {
 		const supabase = getSupabaseClient();
 		const channel = supabase.channel(`admission:${roomId}`);
 
@@ -63,6 +134,12 @@ export function useAdmission({
 					switch (payload.type) {
 						case "admission:request":
 							if (isOwner) {
+								const alreadyQueued = pendingRequestsRef.current.some(
+									(r) => r.username === payload.username,
+								);
+								if (!alreadyQueued) {
+									playAdmissionRequestSound();
+								}
 								setPendingRequests((prev) => {
 									if (prev.some((r) => r.username === payload.username))
 										return prev;

@@ -29,6 +29,7 @@ interface RoomContextValue {
 	cancelWaiting: () => void;
 	onAdmissionAccepted: () => void;
 	onAdmissionRejected: () => void;
+	markMeetingEnded: () => void;
 	leaveCall: () => void;
 	updateOwnership: (secret: string) => void;
 }
@@ -138,6 +139,10 @@ export function RoomProvider({ roomId, children }: RoomProviderProps) {
 		setState({ status: "rejected" });
 	}, []);
 
+	const markMeetingEnded = useCallback(() => {
+		setState({ status: "ended" });
+	}, []);
+
 	return (
 		<RoomContext.Provider
 			value={{
@@ -154,6 +159,7 @@ export function RoomProvider({ roomId, children }: RoomProviderProps) {
 				cancelWaiting,
 				onAdmissionAccepted,
 				onAdmissionRejected,
+				markMeetingEnded,
 				leaveCall,
 				updateOwnership,
 			}}

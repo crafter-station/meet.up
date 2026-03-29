@@ -1,9 +1,5 @@
 "use client";
 
-import { Input } from "@/components/ui/input";
-import { notify } from "@/lib/notify";
-import type { ChatMessage } from "@/components/video-call/types";
-import type { ToolUIPart } from "ai";
 import { LinkPreviews } from "@/components/ai-elements/link-preview";
 import {
   Message,
@@ -22,6 +18,12 @@ import {
   ToolInput,
   ToolOutput,
 } from "@/components/ai-elements/tool";
+import { Input } from "@/components/ui/input";
+import type { ChatMessage } from "@/components/video-call/types";
+import { notify } from "@/lib/notify";
+import { useChat } from "@ai-sdk/react";
+import type { ToolUIPart } from "ai";
+import { DefaultChatTransport } from "ai";
 import {
   ArrowUp,
   Check,
@@ -30,19 +32,14 @@ import {
   GripHorizontal,
   LayoutList,
   MessageSquare,
-  Mic,
-  MicOff,
   Minus,
   Paperclip,
   PenLine,
-  RotateCcw,
   Search,
   X,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { useChat } from "@ai-sdk/react";
-import { DefaultChatTransport } from "ai";
 
 const PANEL_WIDTH = 44 * 16;
 const DESKTOP_MIN_W = 420;
@@ -297,10 +294,15 @@ export function TranscriptionOverlay({
   const isAiLoading = aiStatus === "streaming" || aiStatus === "submitted";
 
   const { suggestionsTitle, suggestions } = useMemo(() => {
-    const lastAssistant = [...aiMessages].reverse().find((m) => m.role === "assistant");
-    if (!lastAssistant) return { suggestionsTitle: null, suggestions: DEFAULT_SUGGESTIONS };
+    const lastAssistant = [...aiMessages]
+      .reverse()
+      .find((m) => m.role === "assistant");
+    if (!lastAssistant)
+      return { suggestionsTitle: null, suggestions: DEFAULT_SUGGESTIONS };
     const toolPart = lastAssistant.parts.find(
-      (p) => p.type === "tool-suggestFollowups" && (p as { state: string }).state === "output-available",
+      (p) =>
+        p.type === "tool-suggestFollowups" &&
+        (p as { state: string }).state === "output-available",
     ) as { output?: { title: string; suggestions: string[] } } | undefined;
     return {
       suggestionsTitle: toolPart?.output?.title ?? null,
@@ -356,7 +358,6 @@ export function TranscriptionOverlay({
               normalize(m.username).includes(query),
           )
         : transcriptMessages,
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     [transcriptMessages, query],
   );
 
@@ -378,6 +379,14 @@ export function TranscriptionOverlay({
     const el = scrollRef.current;
     if (el) el.scrollTop = el.scrollHeight;
   }, [transcriptMessages.length, activePartials.length]);
+
+  useEffect(() => {
+    if (minimized) return;
+    requestAnimationFrame(() => {
+      const el = scrollRef.current;
+      if (el) el.scrollTop = el.scrollHeight;
+    });
+  }, [minimized]);
 
   // ── Desktop drag ───────────────────────────────────────────────
   useEffect(() => {
@@ -445,8 +454,7 @@ export function TranscriptionOverlay({
           nextW = DESKTOP_MIN_W;
         }
         if (nextH < DESKTOP_MIN_H) {
-          if (desktopResize.dir.includes("n"))
-            nextTop -= DESKTOP_MIN_H - nextH;
+          if (desktopResize.dir.includes("n")) nextTop -= DESKTOP_MIN_H - nextH;
           nextH = DESKTOP_MIN_H;
         }
         nextLeft = Math.max(12, Math.min(nextLeft, parentW - nextW - 12));
@@ -499,8 +507,16 @@ export function TranscriptionOverlay({
     cursor: string;
   }> = [
     { dir: "n", className: "top-0 left-2 right-2 h-1.5", cursor: "ns-resize" },
-    { dir: "s", className: "bottom-0 left-2 right-2 h-1.5", cursor: "ns-resize" },
-    { dir: "e", className: "right-0 top-2 bottom-2 w-1.5", cursor: "ew-resize" },
+    {
+      dir: "s",
+      className: "bottom-0 left-2 right-2 h-1.5",
+      cursor: "ns-resize",
+    },
+    {
+      dir: "e",
+      className: "right-0 top-2 bottom-2 w-1.5",
+      cursor: "ew-resize",
+    },
     { dir: "w", className: "left-0 top-2 bottom-2 w-1.5", cursor: "ew-resize" },
     { dir: "ne", className: "top-0 right-0 h-3 w-3", cursor: "nesw-resize" },
     { dir: "nw", className: "top-0 left-0 h-3 w-3", cursor: "nwse-resize" },
@@ -512,20 +528,22 @@ export function TranscriptionOverlay({
   const suggestionPills = (
     <div className="shrink-0 px-3 py-1.5">
       {suggestionsTitle && (
-        <p className="text-[10px] text-muted-foreground/60 mb-1">{suggestionsTitle}</p>
+        <p className="text-[10px] text-muted-foreground/60 mb-1">
+          {suggestionsTitle}
+        </p>
       )}
-    <div className="flex items-center gap-1.5 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-      {suggestions.map((s) => (
-        <button
-          key={s}
-          className="flex items-center gap-1 whitespace-nowrap rounded-full border border-border/40 bg-muted/30 px-2.5 py-1 text-[11px] text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors shrink-0"
-          onClick={() => sendAiMessage(s)}
-        >
-          <PenLine className="h-3 w-3" />
-          {s}
-        </button>
-      ))}
-    </div>
+      <div className="flex items-center gap-1.5 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        {suggestions.map((s) => (
+          <button
+            key={s}
+            className="flex items-center gap-1 whitespace-nowrap rounded-full border border-border/40 bg-muted/30 px-2.5 py-1 text-[11px] text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors shrink-0"
+            onClick={() => sendAiMessage(s)}
+          >
+            <PenLine className="h-3 w-3" />
+            {s}
+          </button>
+        ))}
+      </div>
     </div>
   );
 
@@ -616,7 +634,8 @@ export function TranscriptionOverlay({
         </div>
       )}
       {/* Desktop resize handles */}
-      {!minimized && !isMobile &&
+      {!minimized &&
+        !isMobile &&
         desktopResizeHandles.map((h) => (
           <div
             key={h.dir}
@@ -887,9 +906,16 @@ export function TranscriptionOverlay({
                       const key = `${msg.id}-${pi}`;
 
                       if (part.type === "reasoning") {
-                        const rp = part as { type: "reasoning"; text: string; state?: "streaming" | "done" };
+                        const rp = part as {
+                          type: "reasoning";
+                          text: string;
+                          state?: "streaming" | "done";
+                        };
                         return (
-                          <Reasoning key={key} isStreaming={rp.state === "streaming"}>
+                          <Reasoning
+                            key={key}
+                            isStreaming={rp.state === "streaming"}
+                          >
                             <ReasoningTrigger />
                             <ReasoningContent>{rp.text}</ReasoningContent>
                           </Reasoning>
@@ -899,13 +925,18 @@ export function TranscriptionOverlay({
                       if (part.type === "text") {
                         if (msg.role === "assistant") {
                           const isLastPart = pi === msg.parts.length - 1;
-                          const streaming = aiStatus === "streaming" && isLastMsg && isLastPart;
+                          const streaming =
+                            aiStatus === "streaming" && isLastMsg && isLastPart;
                           return (
                             <div key={key}>
-                              <MessageResponse mode={streaming ? "streaming" : "static"}>
+                              <MessageResponse
+                                mode={streaming ? "streaming" : "static"}
+                              >
                                 {part.text}
                               </MessageResponse>
-                              {!streaming && <LinkPreviews content={part.text} />}
+                              {!streaming && (
+                                <LinkPreviews content={part.text} />
+                              )}
                             </div>
                           );
                         }
@@ -937,10 +968,18 @@ export function TranscriptionOverlay({
                             <ToolContent>
                               <ToolInput input={tp.input} />
                               {tp.state === "output-available" && (
-                                <ToolOutput output={tp.output} errorText={undefined} />
+                                <ToolOutput
+                                  output={tp.output}
+                                  errorText={undefined}
+                                />
                               )}
                               {tp.state === "output-error" && (
-                                <ToolOutput output={undefined} errorText={tp.errorText ?? "An error occurred"} />
+                                <ToolOutput
+                                  output={undefined}
+                                  errorText={
+                                    tp.errorText ?? "An error occurred"
+                                  }
+                                />
                               )}
                             </ToolContent>
                           </Tool>
@@ -955,18 +994,27 @@ export function TranscriptionOverlay({
                       className="flex items-center gap-1 self-start rounded-md border border-border/50 px-2 py-0.5 text-[11px] text-muted-foreground hover:text-foreground hover:bg-muted/30 transition-colors"
                       onClick={() => {
                         const text = msg.parts
-                          .filter((p): p is { type: "text"; text: string } => p.type === "text")
+                          .filter(
+                            (p): p is { type: "text"; text: string } =>
+                              p.type === "text",
+                          )
                           .map((p) => p.text)
                           .join("\n");
-                        const toolParts = msg.parts
-                          .filter((p) => p.type.startsWith("tool-"));
-                        const title = toolParts.length > 0
-                          ? formatToolName(toolParts[0].type.replace("tool-", ""))
-                          : text.slice(0, 50);
+                        const toolParts = msg.parts.filter((p) =>
+                          p.type.startsWith("tool-"),
+                        );
+                        const title =
+                          toolParts.length > 0
+                            ? formatToolName(
+                                toolParts[0].type.replace("tool-", ""),
+                              )
+                            : text.slice(0, 50);
                         onPinToFeed(
                           text,
                           title,
-                          toolParts.length > 0 ? JSON.stringify(toolParts) : undefined,
+                          toolParts.length > 0
+                            ? JSON.stringify(toolParts)
+                            : undefined,
                         );
                       }}
                     >

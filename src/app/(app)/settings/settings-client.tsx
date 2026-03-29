@@ -1,12 +1,62 @@
 "use client";
 
+import { getScheduledMeetings } from "@/app/actions";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { ScheduleMeetingDialog } from "@/components/schedule-meeting-dialog";
+import { notify } from "@/lib/notify";
 import { useUser } from "@clerk/nextjs";
-import { Loader2 } from "lucide-react";
+import {
+	CalendarPlus,
+	Clock,
+	Copy,
+	ExternalLink,
+	Loader2,
+	Users,
+} from "lucide-react";
+import Link from "next/link";
+import { useEffect, useState } from "react";
 import { GitHubCard } from "./github-card";
 import { GoogleCalendarCard } from "./google-calendar-card";
 
+type ScheduledMeeting = {
+	id: string;
+	title: string;
+	description: string | null;
+	scheduledAt: number;
+	createdAt: number;
+	roomCode: string;
+	roomUrl: string;
+	isLive: boolean;
+	hasEnded: boolean;
+	invitees: Array<{ email: string; emailSent: boolean }>;
+};
+
 export function SettingsClient() {
 	const { isLoaded } = useUser();
+	const [scheduleOpen, setScheduleOpen] = useState(false);
+	const [scheduledMeetings, setScheduledMeetings] = useState<
+		ScheduledMeeting[]
+	>([]);
+	const [loadingMeetings, setLoadingMeetings] = useState(true);
+
+	const fetchMeetings = () => {
+		setLoadingMeetings(true);
+		getScheduledMeetings()
+			.then(({ meetings }) =>
+				setScheduledMeetings(meetings as ScheduledMeeting[]),
+			)
+			.finally(() => setLoadingMeetings(false));
+	};
+
+	useEffect(() => {
+		if (isLoaded) fetchMeetings();
+	}, [isLoaded]);
+
+	const copyCode = (code: string) => {
+		navigator.clipboard.writeText(code);
+		notify("success", { title: "Room code copied" });
+	};
 
 	if (!isLoaded) {
 		return (
@@ -28,6 +78,127 @@ export function SettingsClient() {
 					</p>
 				</div>
 
+				{/* Scheduled Meetings */}
+				<div className="space-y-4">
+					<div className="flex items-center justify-between">
+						<h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+							Scheduled Meetings
+						</h2>
+						<Button
+							size="sm"
+							onClick={() => setScheduleOpen(true)}
+						>
+							<CalendarPlus className="h-3.5 w-3.5" />
+							<span className="ml-1.5">Schedule</span>
+						</Button>
+					</div>
+
+					{loadingMeetings ? (
+						<div className="flex justify-center py-6">
+							<Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+						</div>
+					) : scheduledMeetings.length === 0 ? (
+						<p className="text-sm text-muted-foreground py-4">
+							No scheduled meetings yet.
+						</p>
+					) : (
+						<div className="space-y-3">
+							{scheduledMeetings.map((meeting) => {
+								const isPast =
+									meeting.scheduledAt < Date.now() &&
+									!meeting.isLive;
+								return (
+									<div
+										key={meeting.id}
+										className="rounded-lg border border-border/50 bg-muted/10 p-4"
+									>
+										<div className="flex items-start justify-between gap-4">
+											<div className="min-w-0 flex-1">
+												<div className="flex items-center gap-2">
+													<h3 className="text-sm font-medium truncate">
+														{meeting.title}
+													</h3>
+													{meeting.isLive && (
+														<span className="flex items-center gap-1 text-[10px] text-emerald-400 shrink-0">
+															<span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+															Live
+														</span>
+													)}
+													{meeting.hasEnded && (
+														<Badge
+															variant="outline"
+															className="text-[10px] shrink-0"
+														>
+															Ended
+														</Badge>
+													)}
+												</div>
+												<p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
+													<Clock className="h-3 w-3" />
+													{new Date(
+														meeting.scheduledAt,
+													).toLocaleString(
+														undefined,
+														{
+															month: "short",
+															day: "numeric",
+															hour: "numeric",
+															minute: "2-digit",
+														},
+													)}
+												</p>
+												{meeting.description && (
+													<p className="text-xs text-muted-foreground mt-1 line-clamp-1">
+														{meeting.description}
+													</p>
+												)}
+												<div className="flex items-center gap-3 mt-2">
+													<Badge
+														variant="outline"
+														className="text-[10px] font-mono"
+													>
+														{meeting.roomCode}
+													</Badge>
+													<button
+														type="button"
+														onClick={() =>
+															copyCode(
+																meeting.roomCode,
+															)
+														}
+														className="text-muted-foreground hover:text-foreground transition-colors"
+													>
+														<Copy className="h-3 w-3" />
+													</button>
+													<span className="flex items-center gap-1 text-xs text-muted-foreground">
+														<Users className="h-3 w-3" />
+														{
+															meeting.invitees
+																.length
+														}
+													</span>
+												</div>
+											</div>
+											<Link href={`/${meeting.roomCode}`}>
+												<Button
+													variant="outline"
+													size="sm"
+												>
+													<ExternalLink className="h-3.5 w-3.5" />
+													<span className="ml-1.5">
+														Open
+													</span>
+												</Button>
+											</Link>
+										</div>
+									</div>
+								);
+							})}
+						</div>
+					)}
+				</div>
+
+				{/* Integrations */}
 				<div className="space-y-4">
 					<h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
 						Integrations
@@ -36,6 +207,12 @@ export function SettingsClient() {
 					<GoogleCalendarCard />
 				</div>
 			</div>
+
+			<ScheduleMeetingDialog
+				open={scheduleOpen}
+				onOpenChange={setScheduleOpen}
+				onScheduled={fetchMeetings}
+			/>
 		</div>
 	);
 }

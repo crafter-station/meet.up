@@ -6,6 +6,7 @@ import { useUser, UserButton } from "@clerk/nextjs";
 import { notify } from "@/lib/notify";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { ScheduleMeetingDialog } from "@/components/schedule-meeting-dialog";
 import {
 	Dialog,
 	DialogContent,
@@ -453,6 +454,7 @@ export default function Home() {
 	const [roomCode, setRoomCode] = useState("");
 	const [creating, setCreating] = useState(false);
 	const [joinOpen, setJoinOpen] = useState(false);
+	const [scheduleOpen, setScheduleOpen] = useState(false);
 	const [yOffset, setYOffset] = useState(0);
 	const [meetings, setMeetings] = useState<Meeting[]>([]);
 
@@ -556,6 +558,15 @@ export default function Home() {
 										? "Creating..."
 										: "Start meeting"}
 								</Button>
+								{isSignedIn && (
+									<Button
+										variant="outline"
+										onClick={() => setScheduleOpen(true)}
+										className="h-11 px-5 text-sm font-medium rounded-lg"
+									>
+										Schedule
+									</Button>
+								)}
 								<button
 									type="button"
 									onClick={() => setJoinOpen(true)}
@@ -1112,6 +1123,12 @@ export default function Home() {
 					</form>
 				</DialogContent>
 			</Dialog>
+
+			{/* ─── Schedule Dialog ─── */}
+			<ScheduleMeetingDialog
+				open={scheduleOpen}
+				onOpenChange={setScheduleOpen}
+			/>
 		</div>
 	);
 }

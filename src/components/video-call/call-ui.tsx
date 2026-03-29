@@ -132,6 +132,7 @@ export function CallUI({
 				</div>
 				<TranscriptionOverlay
 					username={username}
+					roomId={roomId}
 					partialTexts={allPartials}
 					messages={messages}
 					mobileOpen={mobileTranscriptionOpen}

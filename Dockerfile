@@ -13,7 +13,7 @@ WORKDIR /app
 # instalar pnpm
 RUN corepack enable && corepack prepare pnpm@latest --activate
 
-ENV NODE_OPTIONS="--max-old-space-size=2048"
+ENV NODE_OPTIONS="--max-old-space-size=4096"
 ENV NEXT_TELEMETRY_DISABLED=1
 
 # Accept build arguments for NEXT_PUBLIC_ environment variables

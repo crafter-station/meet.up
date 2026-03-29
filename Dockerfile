@@ -7,10 +7,14 @@ COPY package.json bun.lock ./
 RUN bun install --frozen-lockfile --production=false
 
 # Stage 2: Build the application
-FROM oven/bun:1 AS builder
+FROM node:22-alpine AS builder
 WORKDIR /app
 
+# instalar pnpm
+RUN corepack enable && corepack prepare pnpm@latest --activate
+
 ENV NODE_OPTIONS="--max-old-space-size=2048"
+ENV NEXT_TELEMETRY_DISABLED=1
 
 # Accept build arguments for NEXT_PUBLIC_ environment variables
 ARG NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY
@@ -34,10 +38,10 @@ ENV REDIS_URL=$REDIS_URL
 ARG OPENAI_API_KEY
 ENV OPENAI_API_KEY=$OPENAI_API_KEY
 
-COPY package.json bun.lock ./
-RUN bun install --frozen-lockfile
+COPY --from=deps /app/node_modules ./node_modules
 COPY . .
-RUN NEXT_DISABLE_TURBOPACK=1 bun run build
+
+RUN NEXT_DISABLE_TURBOPACK=1 pnpm build
 
 # Stage 3: Production server (Runner)
 FROM node:22.12-alpine3.21 AS runner

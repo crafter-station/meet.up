@@ -1,0 +1,1 @@
+ALTER TABLE "rooms" ADD COLUMN "participant_limit" integer DEFAULT 5 NOT NULL;

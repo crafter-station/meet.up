@@ -64,6 +64,13 @@
       "when": 1774816054356,
       "tag": "0008_cooing_gravity",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1774816883137,
+      "tag": "0009_glossy_wolf_cub",
+      "breakpoints": true
     }
   ]
 }

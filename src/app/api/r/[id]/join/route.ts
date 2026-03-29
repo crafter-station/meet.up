@@ -4,7 +4,7 @@ import { participants, rooms } from "@/db/schema";
 import { createMeetingToken, getDailyRoom } from "@/lib/daily";
 import { checkIsOwner } from "@/lib/owner";
 import { redis } from "@/lib/redis";
-import { eq } from "drizzle-orm";
+import { and, count, eq, isNull } from "drizzle-orm";
 import { type NextRequest, NextResponse } from "next/server";
 
 export async function POST(
@@ -40,6 +40,26 @@ export async function POST(
 			return NextResponse.json({ status: "waiting" }, { status: 202 });
 		}
 		await redis.del(grantKey);
+	}
+
+	// ── Participant limit enforcement ──────────────────────────
+	if (!isOwner) {
+		const [{ value: activeCount }] = await db
+			.select({ value: count() })
+			.from(participants)
+			.where(
+				and(
+					eq(participants.roomId, room.id),
+					isNull(participants.leftAt),
+				),
+			);
+
+		if (activeCount >= room.participantLimit) {
+			return NextResponse.json(
+				{ status: "room_full" },
+				{ status: 403 },
+			);
+		}
 	}
 
 	const dailyRoom = await getDailyRoom(id);

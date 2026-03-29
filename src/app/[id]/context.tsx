@@ -13,6 +13,7 @@ type RoomState =
 	| { status: "in-call"; token: string; roomUrl: string }
 	| { status: "rejected" }
 	| { status: "ended" }
+	| { status: "room-full" }
 	| { status: "error"; message: string };
 
 interface RoomContextValue {
@@ -30,6 +31,7 @@ interface RoomContextValue {
 	onAdmissionAccepted: () => void;
 	onAdmissionRejected: () => void;
 	markMeetingEnded: () => void;
+	markRoomFull: () => void;
 	leaveCall: () => void;
 	updateOwnership: (secret: string) => void;
 }
@@ -114,6 +116,14 @@ export function RoomProvider({ roomId, children }: RoomProviderProps) {
 				return;
 			}
 
+			if (res.status === 403) {
+				const data = await res.json();
+				if (data.status === "room_full") {
+					setState({ status: "room-full" });
+					return;
+				}
+			}
+
 			if (!res.ok) throw new Error("Failed to join room");
 
 			const data = await res.json();
@@ -143,6 +153,10 @@ export function RoomProvider({ roomId, children }: RoomProviderProps) {
 		setState({ status: "ended" });
 	}, []);
 
+	const markRoomFull = useCallback(() => {
+		setState({ status: "room-full" });
+	}, []);
+
 	return (
 		<RoomContext.Provider
 			value={{
@@ -160,6 +174,7 @@ export function RoomProvider({ roomId, children }: RoomProviderProps) {
 				onAdmissionAccepted,
 				onAdmissionRejected,
 				markMeetingEnded,
+				markRoomFull,
 				leaveCall,
 				updateOwnership,
 			}}

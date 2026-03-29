@@ -4,11 +4,13 @@
 FROM oven/bun:1 AS deps
 WORKDIR /app
 COPY package.json bun.lock ./
-RUN bun install --frozen-lockfile --production
+RUN bun install --frozen-lockfile --production=false
 
 # Stage 2: Build the application
 FROM oven/bun:1 AS builder
 WORKDIR /app
+
+ENV NODE_OPTIONS="--max-old-space-size=2048"
 
 # Accept build arguments for NEXT_PUBLIC_ environment variables
 ARG NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY
@@ -35,7 +37,7 @@ ENV OPENAI_API_KEY=$OPENAI_API_KEY
 COPY package.json bun.lock ./
 RUN bun install --frozen-lockfile
 COPY . .
-RUN bun run build
+RUN NEXT_DISABLE_TURBOPACK=1 bun run build
 
 # Stage 3: Production server (Runner)
 FROM node:22.12-alpine3.21 AS runner

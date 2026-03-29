@@ -3,12 +3,13 @@
 import { useAdmission } from "@/hooks/use-admission";
 import { useRealtimeChat } from "@/hooks/use-realtime-chat";
 import { useTranscription } from "@/hooks/use-transcription";
+import { useVoiceActions } from "@/hooks/use-voice-actions";
 import {
 	DailyAudio,
 	useActiveSpeakerId,
 	useParticipantIds,
 } from "@daily-co/daily-react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { CallControls } from "./call-controls";
 import { MeetingFeed } from "./meeting-feed";
 import { ParticipantTile } from "./participant-tile";
@@ -35,6 +36,7 @@ export function CallUI({
 	const activeSpeakerId = useActiveSpeakerId();
 	const [showPanel, setShowPanel] = useState(true);
 	const [mobileTranscriptionOpen, setMobileTranscriptionOpen] = useState(true);
+	const [voiceActionsEnabled, setVoiceActionsEnabled] = useState(true);
 
 	// Keep screen awake during the call
 	useEffect(() => {
@@ -100,6 +102,29 @@ export function CallUI({
 			isOwner,
 			onOwnershipReceived,
 		});
+
+	// Fetch voice actions setting on mount
+	useEffect(() => {
+		fetch(`/api/r/${roomId}/settings`)
+			.then((res) => res.json())
+			.then((data) => {
+				if (data.voiceActionsEnabled !== undefined)
+					setVoiceActionsEnabled(data.voiceActionsEnabled);
+			})
+			.catch(() => {});
+	}, [roomId]);
+
+	// Build transcript text for voice actions
+	const transcriptText = useMemo(() => {
+		const msgs = messages.filter((m) => m.type === "transcript");
+		return msgs.map((m) => `${m.username}: ${m.content}`).join("\n");
+	}, [messages]);
+
+	useVoiceActions({
+		transcriptText,
+		roomId,
+		enabled: voiceActionsEnabled,
+	});
 
 	// Merge local partial with remote partials
 	const allPartials: Record<string, string> = { ...partialTexts };
@@ -188,6 +213,8 @@ export function CallUI({
 				onRejectUser={rejectUser}
 				onLeaveCall={onLeaveCall}
 				onBroadcastOwnershipTransfer={broadcastOwnershipTransfer}
+			voiceActionsEnabled={voiceActionsEnabled}
+			onVoiceActionsChange={setVoiceActionsEnabled}
 			/>
 		</div>
 	);

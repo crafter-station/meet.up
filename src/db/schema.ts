@@ -15,6 +15,7 @@ export const rooms = pgTable("rooms", {
 	endedAt: timestamp("ended_at"),
 	autoAccept: boolean("auto_accept").notNull().default(false),
 	participantLimit: integer("participant_limit").notNull().default(5),
+	voiceActionsEnabled: boolean("voice_actions_enabled").notNull().default(true),
 	ownerSecretHash: text("owner_secret_hash").notNull(),
 	ownerClerkUserId: text("owner_clerk_user_id"),
 	ownerFingerprintId: text("owner_fingerprint_id"),

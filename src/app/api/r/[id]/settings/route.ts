@@ -22,6 +22,7 @@ export async function GET(
 	return NextResponse.json({
 		autoAccept: room.autoAccept,
 		participantLimit: room.participantLimit,
+		voiceActionsEnabled: room.voiceActionsEnabled,
 	});
 }
 
@@ -30,7 +31,7 @@ export async function PATCH(
 	{ params }: { params: Promise<{ id: string }> },
 ) {
 	const { id } = await params;
-	const { autoAccept, participantLimit } = await req.json();
+	const { autoAccept, participantLimit, voiceActionsEnabled } = await req.json();
 	const ownerSecret = req.headers.get("x-owner-secret");
 	const { userId: clerkUserId } = await auth();
 
@@ -65,6 +66,10 @@ export async function PATCH(
 		updateData.participantLimit = limit;
 	}
 
+	if (voiceActionsEnabled !== undefined) {
+		updateData.voiceActionsEnabled = Boolean(voiceActionsEnabled);
+	}
+
 	if (Object.keys(updateData).length > 0) {
 		await db
 			.update(rooms)
@@ -75,5 +80,6 @@ export async function PATCH(
 	return NextResponse.json({
 		autoAccept: updateData.autoAccept ?? room.autoAccept,
 		participantLimit: updateData.participantLimit ?? room.participantLimit,
+		voiceActionsEnabled: updateData.voiceActionsEnabled ?? room.voiceActionsEnabled,
 	});
 }

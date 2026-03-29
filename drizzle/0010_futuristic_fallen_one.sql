@@ -1,0 +1,1 @@
+ALTER TABLE "rooms" ADD COLUMN "voice_actions_enabled" boolean DEFAULT true NOT NULL;

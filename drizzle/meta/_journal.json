@@ -71,6 +71,13 @@
       "when": 1774816883137,
       "tag": "0009_glossy_wolf_cub",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1774819890214,
+      "tag": "0010_futuristic_fallen_one",
+      "breakpoints": true
     }
   ]
 }

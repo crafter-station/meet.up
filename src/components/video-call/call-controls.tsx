@@ -478,12 +478,12 @@ function SettingsDialog({
   roomId: string;
   ownerSecret: string;
 }) {
-  const [autoAccept, setAutoAccept] = useState(true);
+  const [autoAccept, setAutoAccept] = useState(false);
   const [loading, setLoading] = useState(false);
 
   // Fetch current setting on mount
   useEffect(() => {
-    // The setting defaults to true; no dedicated GET endpoint, so we use the local state.
+    // The setting defaults to false; no dedicated GET endpoint, so we use the local state.
     // It stays in sync because only the owner can change it.
   }, []);
 

@@ -13,7 +13,7 @@ export const rooms = pgTable("rooms", {
 	createdAt: timestamp("created_at").defaultNow().notNull(),
 	expiresAt: timestamp("expires_at").notNull(),
 	endedAt: timestamp("ended_at"),
-	autoAccept: boolean("auto_accept").notNull().default(true),
+	autoAccept: boolean("auto_accept").notNull().default(false),
 	ownerSecretHash: text("owner_secret_hash").notNull(),
 	ownerClerkUserId: text("owner_clerk_user_id"),
 	ownerFingerprintId: text("owner_fingerprint_id"),

@@ -4,11 +4,13 @@ import { useAdmission } from "@/hooks/use-admission";
 import { useRealtimeChat } from "@/hooks/use-realtime-chat";
 import { useTranscription } from "@/hooks/use-transcription";
 import { useVoiceActions } from "@/hooks/use-voice-actions";
+import { Button } from "@/components/ui/button";
 import {
 	DailyAudio,
 	useActiveSpeakerId,
 	useParticipantIds,
 } from "@daily-co/daily-react";
+import { Check, Loader2, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { CallControls } from "./call-controls";
 import { MeetingFeed } from "./meeting-feed";
@@ -120,11 +122,18 @@ export function CallUI({
 		return msgs.map((m) => `${m.username}: ${m.content}`).join("\n");
 	}, [messages]);
 
-	useVoiceActions({
-		transcriptText,
-		roomId,
-		enabled: voiceActionsEnabled,
-	});
+	const onVoiceActionExecuted = useCallback(
+		(summary: string) => void sendAs(summary, "meet.up AI"),
+		[sendAs],
+	);
+
+	const { pendingAction, executing, acceptAction, rejectAction } =
+		useVoiceActions({
+			transcriptText,
+			roomId,
+			enabled: voiceActionsEnabled,
+			onExecuted: onVoiceActionExecuted,
+		});
 
 	// Merge local partial with remote partials
 	const allPartials: Record<string, string> = { ...partialTexts };
@@ -141,6 +150,43 @@ export function CallUI({
 		<div className="flex h-full w-full flex-col">
 			<DailyAudio />
 			<div className="relative flex flex-1 overflow-hidden">
+				{/* Voice action proposal */}
+				{pendingAction && (
+					<div className="absolute top-3 left-1/2 -translate-x-1/2 z-50 w-[90%] max-w-md">
+						<div className="rounded-lg border border-primary/30 bg-background p-4 shadow-2xl">
+							<p className="text-xs font-semibold text-primary mb-1">
+								Voice Action Detected
+							</p>
+							<p className="text-sm text-foreground mb-3">
+								{pendingAction.proposal}
+							</p>
+							<div className="flex gap-2 justify-end">
+								<Button
+									size="sm"
+									variant="outline"
+									onClick={rejectAction}
+									disabled={executing}
+								>
+									<X className="h-4 w-4 mr-1" />
+									Reject
+								</Button>
+								<Button
+									size="sm"
+									onClick={() => void acceptAction()}
+									disabled={executing}
+								>
+									{executing ? (
+										<Loader2 className="h-4 w-4 mr-1 animate-spin" />
+									) : (
+										<Check className="h-4 w-4 mr-1" />
+									)}
+									Accept
+								</Button>
+							</div>
+						</div>
+					</div>
+				)}
+
 				{/* Video Grid */}
 				<div className="flex-1 p-3">
 					<div

@@ -2,7 +2,10 @@ import { gateway } from "@ai-sdk/gateway";
 import { createMCPClient } from "@ai-sdk/mcp";
 import { Experimental_StdioMCPTransport } from "@ai-sdk/mcp/mcp-stdio";
 import { auth } from "@clerk/nextjs/server";
-import { getValidAccessToken } from "@/lib/integrations/token-service";
+import {
+  getValidAccessToken,
+  getConnection,
+} from "@/lib/integrations/token-service";
 import {
   convertToModelMessages,
   streamText,
@@ -66,6 +69,37 @@ async function initNotionMCP(
   return { client, tools: mcpTools };
 }
 
+async function initJiraMCP(
+  userId: string,
+): Promise<{ client: MCPClient; tools: Record<string, unknown> } | null> {
+  const jiraToken = await getValidAccessToken(userId, "jira");
+  if (!jiraToken) return null;
+
+  const connection = await getConnection(userId, "jira");
+  if (!connection?.providerMetadata) return null;
+
+  const metadata = JSON.parse(connection.providerMetadata) as {
+    cloudId: string;
+    siteUrl: string;
+  };
+
+  const transport = new Experimental_StdioMCPTransport({
+    command: "uvx",
+    args: ["mcp-atlassian"],
+    env: {
+      ...process.env,
+      JIRA_URL: metadata.siteUrl,
+      ATLASSIAN_OAUTH_CLOUD_ID: metadata.cloudId,
+      ATLASSIAN_OAUTH_ACCESS_TOKEN: jiraToken,
+    } as Record<string, string>,
+  });
+
+  const client = await createMCPClient({ transport });
+  const mcpTools = await client.tools();
+
+  return { client, tools: mcpTools };
+}
+
 async function initGoogleCalendar(
   userId: string,
 ): Promise<ReturnType<typeof googleCalendarTools> | null> {
@@ -87,6 +121,7 @@ export async function POST(req: Request) {
 
     let github: Awaited<ReturnType<typeof initGitHubMCP>> = null;
     let notion: Awaited<ReturnType<typeof initNotionMCP>> = null;
+    let jira: Awaited<ReturnType<typeof initJiraMCP>> = null;
     let googleCalendar: ReturnType<typeof googleCalendarTools> | null = null;
     if (userId) {
       try {
@@ -98,6 +133,11 @@ export async function POST(req: Request) {
         notion = await initNotionMCP(userId);
       } catch (e) {
         console.error("Failed to initialize Notion MCP:", e);
+      }
+      try {
+        jira = await initJiraMCP(userId);
+      } catch (e) {
+        console.error("Failed to initialize Jira MCP:", e);
       }
       try {
         googleCalendar = await initGoogleCalendar(userId);
@@ -118,6 +158,7 @@ export async function POST(req: Request) {
     const basePrompt = getSystemPrompt({
       hasGitHub: !!github,
       hasNotion: !!notion,
+      hasJira: !!jira,
       hasGoogleCalendar: !!googleCalendar,
       hasMeetingTools: !!meetingToolset,
     });
@@ -129,15 +170,17 @@ export async function POST(req: Request) {
       model: gateway("anthropic/claude-sonnet-4-6"),
       system,
       messages: modelMessages,
-      tools: { ...tools(), ...getCurrentTimeTool(), ...github?.tools, ...notion?.tools, ...googleCalendar, ...meetingToolset },
+      tools: { ...tools(), ...getCurrentTimeTool(), ...github?.tools, ...notion?.tools, ...jira?.tools, ...googleCalendar, ...meetingToolset },
       stopWhen: stepCountIs(5),
       onFinish: async () => {
         await github?.client.close();
         await notion?.client.close();
+        await jira?.client.close();
       },
       onError: async () => {
         await github?.client.close();
         await notion?.client.close();
+        await jira?.client.close();
       },
     });
 

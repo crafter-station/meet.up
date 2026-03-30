@@ -1,0 +1,1 @@
+ALTER TABLE "oauth_connections" ADD COLUMN "provider_metadata" text;

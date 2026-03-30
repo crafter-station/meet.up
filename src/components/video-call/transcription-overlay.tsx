@@ -21,7 +21,7 @@ import {
 import { Input } from "@/components/ui/input";
 import type { ChatMessage } from "@/components/video-call/types";
 import { notify } from "@/lib/notify";
-import { useChat } from "@ai-sdk/react";
+import { useChat, type UIMessage } from "@ai-sdk/react";
 import type { ToolUIPart } from "ai";
 import { DefaultChatTransport } from "ai";
 import {
@@ -30,6 +30,7 @@ import {
   ChevronDown,
   Copy,
   GripHorizontal,
+  History,
   LayoutList,
   MessageSquare,
   Minus,
@@ -144,6 +145,24 @@ const DEFAULT_SUGGESTIONS = [
   "Make notes longer",
   "Write tldr",
 ];
+
+// ── Chat history helpers ────────────────────────────────────────
+interface ChatHistoryEntry {
+  id: string;
+  messages: UIMessage[];
+  preview: string;
+  createdAt: number;
+}
+
+function getChatPreview(messages: UIMessage[]): string {
+  const first = messages.find((m) => m.role === "user");
+  if (!first) return "Empty chat";
+  const text = first.parts
+    .filter((p): p is { type: "text"; text: string } => p.type === "text")
+    .map((p) => p.text)
+    .join(" ");
+  return text.slice(0, 80) || "Empty chat";
+}
 
 export interface TranscriptionOverlayHandle {
   sendAiMessage: (text: string) => void;
@@ -308,6 +327,22 @@ export function TranscriptionOverlay({
 
   const isAiLoading = aiStatus === "streaming" || aiStatus === "submitted";
 
+  // ── Chat history ───────────────────────────────────────────────
+  const [chatHistory, setChatHistory] = useState<ChatHistoryEntry[]>([]);
+  const [activeChatId, setActiveChatId] = useState<string | null>(null);
+  const [showHistory, setShowHistory] = useState(false);
+  const historyDropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!showHistory) return;
+    const onPointerDown = (e: PointerEvent) => {
+      if (historyDropdownRef.current?.contains(e.target as Node)) return;
+      setShowHistory(false);
+    };
+    document.addEventListener("pointerdown", onPointerDown);
+    return () => document.removeEventListener("pointerdown", onPointerDown);
+  }, [showHistory]);
+
   const { suggestionsTitle, suggestions } = useMemo(() => {
     const lastAssistant = [...aiMessages]
       .reverse()
@@ -346,11 +381,54 @@ export function TranscriptionOverlay({
     if (handleRef) handleRef.current = { sendAiMessage };
   }, [handleRef, sendAiMessage]);
 
+  const saveCurrentToHistory = useCallback(() => {
+    if (aiMessages.length === 0) return;
+    const id = activeChatId ?? crypto.randomUUID();
+    const preview = getChatPreview(aiMessages);
+    setChatHistory((prev) => {
+      const idx = prev.findIndex((e) => e.id === id);
+      const entry: ChatHistoryEntry = {
+        id,
+        messages: [...aiMessages],
+        preview,
+        createdAt: idx >= 0 ? prev[idx].createdAt : Date.now(),
+      };
+      if (idx >= 0) {
+        const updated = [...prev];
+        updated[idx] = entry;
+        return updated;
+      }
+      return [...prev, entry];
+    });
+    return id;
+  }, [aiMessages, activeChatId]);
+
   const newChat = useCallback(() => {
+    saveCurrentToHistory();
+    setActiveChatId(null);
     setAiMessages([]);
     setPanelView("chat");
+    setShowHistory(false);
     setTimeout(() => aiInputRef.current?.focus(), 50);
-  }, [setAiMessages]);
+  }, [saveCurrentToHistory, setAiMessages]);
+
+  const switchToChat = useCallback(
+    (id: string) => {
+      saveCurrentToHistory();
+      const entry = chatHistory.find((e) => e.id === id);
+      if (entry) {
+        setActiveChatId(id);
+        setAiMessages(entry.messages);
+        setPanelView("chat");
+        setShowHistory(false);
+      }
+    },
+    [saveCurrentToHistory, chatHistory, setAiMessages],
+  );
+
+  const deleteHistoryEntry = useCallback((id: string) => {
+    setChatHistory((prev) => prev.filter((e) => e.id !== id));
+  }, []);
 
   // ── Data ───────────────────────────────────────────────────────
   const transcriptMessages = useMemo(
@@ -829,6 +907,48 @@ export function TranscriptionOverlay({
             <ChevronDown className="h-3 w-3 text-muted-foreground" />
           </button>
           <div className="flex-1" />
+          {chatHistory.length > 0 && (
+            <div className="relative" ref={historyDropdownRef}>
+              <button
+                className="text-muted-foreground hover:text-foreground p-1 rounded-md hover:bg-white/5 transition-colors"
+                onPointerDown={(e) => e.stopPropagation()}
+                onClick={() => setShowHistory((prev) => !prev)}
+                title="Chat history"
+              >
+                <History className="h-4 w-4" />
+              </button>
+              {showHistory && (
+                <div className="absolute right-0 top-full mt-1 w-64 max-h-52 overflow-y-auto rounded-lg border border-border/50 bg-background/95 backdrop-blur-xl shadow-xl z-50">
+                  <div className="px-3 py-1.5 text-[10px] font-medium text-muted-foreground/60 uppercase tracking-wider border-b border-border/30">
+                    Previous chats
+                  </div>
+                  {chatHistory.map((entry) => (
+                    <div
+                      key={entry.id}
+                      className={`group flex items-center gap-2 px-3 py-2 text-xs hover:bg-muted/30 transition-colors cursor-pointer ${
+                        entry.id === activeChatId
+                          ? "text-foreground bg-muted/20"
+                          : "text-muted-foreground"
+                      }`}
+                      onClick={() => switchToChat(entry.id)}
+                    >
+                      <MessageSquare className="h-3 w-3 shrink-0 opacity-50" />
+                      <span className="flex-1 truncate">{entry.preview}</span>
+                      <button
+                        className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-foreground p-0.5 rounded transition-opacity"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          deleteHistoryEntry(entry.id);
+                        }}
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
           <button
             className="flex items-center gap-1.5 rounded-full bg-muted/50 px-3 py-1 text-xs text-muted-foreground hover:text-foreground hover:bg-muted/70 transition-colors"
             onPointerDown={(e) => e.stopPropagation()}

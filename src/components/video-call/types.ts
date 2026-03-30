@@ -63,3 +63,21 @@ export type FeedItem = ArtifactFeedItem | NoteFeedItem | ActionItemFeedItem;
 export type TimelineEntry =
 	| { kind: "chat"; data: ChatMessage }
 	| { kind: "feed"; data: FeedItem };
+
+/** Synced flying reaction — random params generated once on sender for all clients. */
+export interface FlyingReactionPayload {
+	id: string;
+	emoji: string;
+	fromUsername: string;
+	/** Horizontal anchor 0–1 from left (emoji rises from bottom). */
+	originX: number;
+	/** Horizontal drift end offset (px). */
+	driftX: number;
+	/** Mid-arc horizontal offset (px) for a slight curve. */
+	arcX: number;
+	/** Vertical travel (negative = upward, px). */
+	travelY: number;
+	durationMs: number;
+	/** Subtle wobble (degrees) for organic motion. */
+	rotateDeg: number;
+}

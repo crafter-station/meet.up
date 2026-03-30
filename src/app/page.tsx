@@ -77,13 +77,23 @@ function Navbar({
 						</span>
 					</Link>
 					<nav className="hidden md:flex items-center gap-1 text-sm">
-						{["Features", "Pricing", "Docs"].map((item) => (
-							<span
-								key={item}
-								className="px-3 py-1.5 text-muted-foreground hover:text-foreground transition-colors cursor-default"
+						{[
+							{ label: "Features", id: "features" },
+							{ label: "AI", id: "ai" },
+							{ label: "FAQ", id: "faq" },
+						].map((item) => (
+							<button
+								key={item.id}
+								type="button"
+								onClick={() =>
+									document
+										.getElementById(item.id)
+										?.scrollIntoView({ behavior: "smooth" })
+								}
+								className="px-3 py-1.5 text-muted-foreground hover:text-foreground transition-colors"
 							>
-								{item}
-							</span>
+								{item.label}
+							</button>
 						))}
 					</nav>
 				</div>
@@ -772,7 +782,7 @@ export default function Home() {
 			)}
 
 			{/* ─── Feature Cards ─── */}
-			<section className="relative z-20 py-32">
+			<section id="features" className="relative z-20 py-32">
 				<div className="w-full flex justify-center px-6">
 					<div className="w-full max-w-5xl">
 						<div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-8 mb-16">
@@ -862,7 +872,7 @@ export default function Home() {
 			</section>
 
 			{/* ─── AI Section ─── */}
-			<section className="relative z-20 py-32">
+			<section id="ai" className="relative z-20 py-32">
 				<div className="w-full flex justify-center px-6">
 					<div className="w-full max-w-5xl">
 						{/* Section label */}
@@ -1038,7 +1048,7 @@ export default function Home() {
 			</section>
 
 			{/* ─── FAQ ─── */}
-			<section className="relative z-20 py-32 border-t border-border/30">
+			<section id="faq" className="relative z-20 py-32 border-t border-border/30">
 				<div className="max-w-5xl mx-auto w-full px-6">
 					<div className="grid md:grid-cols-[1fr_2fr] gap-12">
 						<motion.h3

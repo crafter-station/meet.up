@@ -58,7 +58,7 @@ export function getSystemPrompt(options: {
 	hasGoogleCalendar: boolean;
 	hasMeetingTools: boolean;
 }): string {
-	let prompt = basePrompt;
+	let prompt = `${basePrompt}\n\nCurrent time (UTC): ${new Date().toISOString()}`;
 	if (options.hasGitHub) prompt += githubPrompt;
 	if (options.hasGoogleCalendar) prompt += googleCalendarPrompt;
 	if (options.hasMeetingTools) prompt += meetingToolsPrompt;

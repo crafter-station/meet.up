@@ -93,6 +93,7 @@ export const oauthConnections = pgTable(
 		tokenExpiresAt: timestamp("token_expires_at"),
 		scopes: text("scopes"),
 		accountLabel: text("account_label"),
+		providerMetadata: text("provider_metadata"),
 		createdAt: timestamp("created_at").defaultNow().notNull(),
 		updatedAt: timestamp("updated_at").defaultNow().notNull(),
 	},

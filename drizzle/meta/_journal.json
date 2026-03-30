@@ -85,6 +85,13 @@
       "when": 1774902857326,
       "tag": "0011_slippery_beyonder",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1774907882797,
+      "tag": "0012_special_ben_grimm",
+      "breakpoints": true
     }
   ]
 }

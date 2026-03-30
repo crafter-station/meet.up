@@ -3,17 +3,27 @@ import { oauthConnections } from "@/db/schema";
 import { eq, and } from "drizzle-orm";
 import { getIntegration, type IntegrationProvider } from "./config";
 
-export async function getValidAccessToken(
+type OAuthConnection = typeof oauthConnections.$inferSelect;
+
+/** Returns the full DB row for an oauth connection (no refresh). */
+export async function getConnection(
 	clerkUserId: string,
 	provider: IntegrationProvider,
-): Promise<string | null> {
+): Promise<OAuthConnection | null> {
 	const connection = await db.query.oauthConnections.findFirst({
 		where: and(
 			eq(oauthConnections.clerkUserId, clerkUserId),
 			eq(oauthConnections.provider, provider),
 		),
 	});
+	return connection ?? null;
+}
 
+export async function getValidAccessToken(
+	clerkUserId: string,
+	provider: IntegrationProvider,
+): Promise<string | null> {
+	const connection = await getConnection(clerkUserId, provider);
 	if (!connection) return null;
 
 	const config = getIntegration(provider);
@@ -36,15 +46,24 @@ export async function getValidAccessToken(
 	const clientSecret = process.env[config.envClientSecret];
 	if (!clientId || !clientSecret) return null;
 
+	const useJson = config.tokenContentType === "json";
+	const refreshPayload = {
+		client_id: clientId,
+		client_secret: clientSecret,
+		refresh_token: connection.refreshToken,
+		grant_type: "refresh_token",
+	};
+
 	const res = await fetch(config.tokenUrl, {
 		method: "POST",
-		headers: { "Content-Type": "application/x-www-form-urlencoded" },
-		body: new URLSearchParams({
-			client_id: clientId,
-			client_secret: clientSecret,
-			refresh_token: connection.refreshToken,
-			grant_type: "refresh_token",
-		}),
+		headers: {
+			"Content-Type": useJson
+				? "application/json"
+				: "application/x-www-form-urlencoded",
+		},
+		body: useJson
+			? JSON.stringify(refreshPayload)
+			: new URLSearchParams(refreshPayload).toString(),
 	});
 
 	const data = await res.json();

@@ -1,4 +1,4 @@
-export type IntegrationProvider = "google" | "github" | "notion";
+export type IntegrationProvider = "google" | "github" | "notion" | "jira";
 
 export interface IntegrationConfig {
 	provider: IntegrationProvider;
@@ -67,6 +67,27 @@ export const integrations: Record<IntegrationProvider, IntegrationConfig> = {
 		tokenAuthMethod: "basic",
 		tokenContentType: "json",
 		authorizeParams: { owner: "user" },
+	},
+	jira: {
+		provider: "jira",
+		displayName: "Jira",
+		description:
+			"Connect your Atlassian account to let the AI assistant search, create, and manage Jira issues during meetings.",
+		connectedDescription:
+			"Connected \u2014 the AI assistant can search, create, and manage Jira issues during meetings.",
+		authorizeUrl: "https://auth.atlassian.com/authorize",
+		tokenUrl: "https://auth.atlassian.com/oauth/token",
+		scopes: [
+			"read:jira-work",
+			"write:jira-work",
+			"read:jira-user",
+			"offline_access",
+		],
+		envClientId: "JIRA_CLIENT_ID",
+		envClientSecret: "JIRA_CLIENT_SECRET",
+		supportsRefresh: true,
+		tokenContentType: "json",
+		authorizeParams: { audience: "api.atlassian.com", prompt: "consent" },
 	},
 };
 

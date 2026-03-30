@@ -101,6 +101,11 @@ export async function GET(req: Request) {
 		tokenData,
 	);
 
+	const providerMetadata = await fetchProviderMetadata(
+		config.provider,
+		tokenData.access_token,
+	);
+
 	// Upsert the connection
 	const existing = await db.query.oauthConnections.findFirst({
 		where: and(
@@ -123,6 +128,7 @@ export async function GET(req: Request) {
 				tokenExpiresAt: expiresAt,
 				scopes: tokenData.scope ?? config.scopes.join(" "),
 				accountLabel,
+				providerMetadata: providerMetadata ?? existing.providerMetadata,
 				updatedAt: now,
 			})
 			.where(eq(oauthConnections.id, existing.id));
@@ -136,6 +142,7 @@ export async function GET(req: Request) {
 			tokenExpiresAt: expiresAt,
 			scopes: tokenData.scope ?? config.scopes.join(" "),
 			accountLabel,
+			providerMetadata,
 			createdAt: now,
 			updatedAt: now,
 		});
@@ -170,6 +177,41 @@ async function fetchAccountLabel(
 		}
 		if (provider === "notion") {
 			return (tokenData.workspace_name as string) ?? null;
+		}
+		if (provider === "jira") {
+			const res = await fetch(
+				"https://api.atlassian.com/oauth/token/accessible-resources",
+				{ headers: { Authorization: `Bearer ${accessToken}` } },
+			);
+			const sites = await res.json();
+			if (Array.isArray(sites) && sites.length > 0) {
+				return sites[0].name ?? null;
+			}
+			return null;
+		}
+		return null;
+	} catch {
+		return null;
+	}
+}
+
+async function fetchProviderMetadata(
+	provider: string,
+	accessToken: string,
+): Promise<string | null> {
+	try {
+		if (provider === "jira") {
+			const res = await fetch(
+				"https://api.atlassian.com/oauth/token/accessible-resources",
+				{ headers: { Authorization: `Bearer ${accessToken}` } },
+			);
+			const sites = await res.json();
+			if (Array.isArray(sites) && sites.length > 0) {
+				return JSON.stringify({
+					cloudId: sites[0].id,
+					siteUrl: sites[0].url,
+				});
+			}
 		}
 		return null;
 	} catch {

@@ -90,6 +90,19 @@ function NotionIcon({ className }: { className?: string }) {
 	);
 }
 
+function JiraIcon({ className }: { className?: string }) {
+	return (
+		<svg
+			viewBox="0 0 24 24"
+			fill="currentColor"
+			className={className}
+			aria-hidden="true"
+		>
+			<path d="M11.571 11.513H0a5.218 5.218 0 0 0 5.232 5.215h2.13v2.057A5.215 5.215 0 0 0 12.575 24V12.518a1.005 1.005 0 0 0-1.005-1.005zm5.723-5.756H5.736a5.215 5.215 0 0 0 5.215 5.215h2.129v2.058a5.218 5.218 0 0 0 5.215 5.214V6.762a1.005 1.005 0 0 0-1.001-1.005zM23 .249H11.443a5.215 5.215 0 0 0 5.215 5.215h2.129v2.057A5.215 5.215 0 0 0 24 12.735V1.254A1.005 1.005 0 0 0 23 .249z" />
+		</svg>
+	);
+}
+
 export const providerIcons: Record<
 	IntegrationProvider,
 	React.FC<{ className?: string }>
@@ -97,4 +110,5 @@ export const providerIcons: Record<
 	google: GoogleCalendarIcon,
 	github: GitHubIcon,
 	notion: NotionIcon,
+	jira: JiraIcon,
 };

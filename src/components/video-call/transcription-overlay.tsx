@@ -293,6 +293,8 @@ export function TranscriptionOverlay({
   const [aiInput, setAiInput] = useState("");
   const aiInputRef = useRef<HTMLInputElement>(null);
   const aiScrollRef = useRef<HTMLDivElement>(null);
+  const chatFileInputRef = useRef<HTMLInputElement>(null);
+  const [pendingFiles, setPendingFiles] = useState<File[]>([]);
 
   // Build transcript text to send as context
   const transcriptText = useMemo(() => {
@@ -365,15 +367,76 @@ export function TranscriptionOverlay({
     if (el) el.scrollTop = el.scrollHeight;
   }, [aiMessages.length]);
 
+  const handleChatFileSelect = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+      e.target.value = "";
+      if (file.size > 10 * 1024 * 1024) {
+        notify("error", { title: "File must be under 10 MB" });
+        return;
+      }
+      setPendingFiles((prev) => [...prev, file]);
+    },
+    [],
+  );
+
   const sendAiMessage = useCallback(
-    (text: string) => {
+    async (text: string) => {
       const trimmed = text.trim();
-      if (!trimmed || isAiLoading) return;
+      if (!trimmed && pendingFiles.length === 0) return;
+      if (isAiLoading) return;
       setAiInput("");
       setPanelView("chat");
-      sendMessage({ text: trimmed });
+
+      const filesToSend = [...pendingFiles];
+      setPendingFiles([]);
+
+      if (filesToSend.length > 0) {
+        // Separate media files (images/PDFs) from text-based files
+        const mediaFiles: File[] = [];
+        const textContents: string[] = [];
+
+        await Promise.all(
+          filesToSend.map(async (file) => {
+            if (
+              file.type.startsWith("image/") ||
+              file.type === "application/pdf"
+            ) {
+              mediaFiles.push(file);
+            } else {
+              // Read text-based files and inline their content
+              const content = await file.text();
+              textContents.push(
+                `--- ${file.name} ---\n${content}\n--- end ${file.name} ---`,
+              );
+            }
+          }),
+        );
+
+        let messageText = trimmed;
+        if (textContents.length > 0) {
+          const fileContext = textContents.join("\n\n");
+          messageText = messageText
+            ? `${messageText}\n\nAttached file contents:\n${fileContext}`
+            : `Please analyze the following file contents:\n\n${fileContext}`;
+        }
+        if (!messageText && mediaFiles.length > 0) {
+          messageText = `I've attached ${mediaFiles.length === 1 ? "a file" : `${mediaFiles.length} files`}. Please analyze ${mediaFiles.length === 1 ? "it" : "them"}.`;
+        }
+
+        if (mediaFiles.length > 0) {
+          const dt = new DataTransfer();
+          for (const f of mediaFiles) dt.items.add(f);
+          sendMessage({ text: messageText, files: dt.files });
+        } else {
+          sendMessage({ text: messageText });
+        }
+      } else {
+        sendMessage({ text: trimmed });
+      }
     },
-    [isAiLoading, sendMessage],
+    [isAiLoading, sendMessage, pendingFiles],
   );
 
   // Expose sendAiMessage to parent via ref
@@ -664,6 +727,27 @@ export function TranscriptionOverlay({
   // ── AI chat input bar ──────────────────────────────────────────
   const chatInputBar = (
     <div className="px-3 pb-2 pt-1 shrink-0">
+      {pendingFiles.length > 0 && (
+        <div className="flex flex-wrap gap-1.5 mb-1.5 px-1">
+          {pendingFiles.map((f, i) => (
+            <div
+              key={`${f.name}-${i}`}
+              className="flex items-center gap-1 rounded-full bg-muted/50 border border-border/40 px-2 py-0.5 text-[11px] text-muted-foreground"
+            >
+              <Paperclip className="h-2.5 w-2.5 shrink-0" />
+              <span className="max-w-[120px] truncate">{f.name}</span>
+              <button
+                className="hover:text-foreground"
+                onClick={() =>
+                  setPendingFiles((prev) => prev.filter((_, idx) => idx !== i))
+                }
+              >
+                <X className="h-2.5 w-2.5" />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
       <div className="flex items-center gap-2 rounded-full border border-[#6b7a2f]/60 bg-muted/30 px-4 py-1.5">
         <input
           ref={aiInputRef}
@@ -680,12 +764,24 @@ export function TranscriptionOverlay({
         />
         <span className="text-[11px] text-muted-foreground/50">Auto</span>
         <ChevronDown className="h-3 w-3 text-muted-foreground/50" />
-        <button className="text-muted-foreground/50 hover:text-muted-foreground">
+        <button
+          className="text-muted-foreground/50 hover:text-muted-foreground disabled:opacity-30"
+          onClick={() => chatFileInputRef.current?.click()}
+        >
           <Paperclip className="h-3.5 w-3.5" />
         </button>
+        <input
+          ref={chatFileInputRef}
+          type="file"
+          className="hidden"
+          accept="image/*,.pdf,.txt,.md,.csv,.json"
+          onChange={handleChatFileSelect}
+        />
         <button
           className="flex h-6 w-6 items-center justify-center rounded-full bg-[#6b7a2f] text-white hover:bg-[#7d8e36] transition-colors disabled:opacity-30"
-          disabled={!aiInput.trim() || isAiLoading}
+          disabled={
+            (!aiInput.trim() && pendingFiles.length === 0) || isAiLoading
+          }
           onClick={() => sendAiMessage(aiInput)}
         >
           <ArrowUp className="h-3.5 w-3.5" />
@@ -1100,6 +1196,37 @@ export function TranscriptionOverlay({
                           <MessageResponse key={key} mode="static">
                             {part.text}
                           </MessageResponse>
+                        );
+                      }
+
+                      if (part.type === "file") {
+                        const fp = part as {
+                          type: "file";
+                          mediaType: string;
+                          url: string;
+                        };
+                        if (fp.mediaType.startsWith("image/")) {
+                          return (
+                            <img
+                              key={key}
+                              src={fp.url}
+                              alt="Attached image"
+                              className="max-w-full max-h-48 rounded-lg object-contain"
+                            />
+                          );
+                        }
+                        return (
+                          <div
+                            key={key}
+                            className="flex items-center gap-1.5 rounded-md bg-muted/30 border border-border/40 px-2.5 py-1.5 text-xs text-muted-foreground"
+                          >
+                            <Paperclip className="h-3 w-3 shrink-0" />
+                            <span>
+                              {fp.mediaType === "application/pdf"
+                                ? "PDF attachment"
+                                : "File attachment"}
+                            </span>
+                          </div>
                         );
                       }
 

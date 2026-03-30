@@ -43,6 +43,18 @@ You have access to Google Calendar tools via the user's connected account. You c
 
 When the user asks about their schedule, upcoming meetings, or wants to create/modify calendar events, use the available Google Calendar tools directly. Always confirm event details (especially date/time and attendees) before creating or modifying events. When displaying events, format dates and times clearly.`;
 
+const notionPrompt = `
+
+Notion Integration:
+You have access to Notion tools via the user's connected workspace. You can:
+- Search for pages and databases
+- Read page content and properties
+- Create new pages and add content
+- Update existing pages
+- Query databases with filters and sorts
+
+When the user asks about their Notion workspace, notes, or documentation, use the available Notion tools directly. Always confirm the target page or database before performing write operations.`;
+
 const meetingToolsPrompt = `
 
 Meeting Tools:
@@ -55,11 +67,13 @@ When the user asks to schedule a follow-up meeting, use scheduleNewMeeting. If t
 
 export function getSystemPrompt(options: {
 	hasGitHub: boolean;
+	hasNotion: boolean;
 	hasGoogleCalendar: boolean;
 	hasMeetingTools: boolean;
 }): string {
 	let prompt = `${basePrompt}\n\nCurrent time (UTC): ${new Date().toISOString()}`;
 	if (options.hasGitHub) prompt += githubPrompt;
+	if (options.hasNotion) prompt += notionPrompt;
 	if (options.hasGoogleCalendar) prompt += googleCalendarPrompt;
 	if (options.hasMeetingTools) prompt += meetingToolsPrompt;
 	return prompt;

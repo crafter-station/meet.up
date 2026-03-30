@@ -78,6 +78,13 @@
       "when": 1774819890214,
       "tag": "0010_futuristic_fallen_one",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1774902857326,
+      "tag": "0011_slippery_beyonder",
+      "breakpoints": true
     }
   ]
 }

@@ -4,6 +4,8 @@ import { getScheduledMeetings } from "@/app/actions";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ScheduleMeetingDialog } from "@/components/schedule-meeting-dialog";
+import { getAllIntegrations } from "@/lib/integrations/config";
+import { providerIcons } from "@/lib/integrations/icons";
 import { notify } from "@/lib/notify";
 import { useUser } from "@clerk/nextjs";
 import {
@@ -15,9 +17,11 @@ import {
 	Users,
 } from "lucide-react";
 import Link from "next/link";
-import { useEffect, useState } from "react";
-import { GitHubCard } from "./github-card";
-import { GoogleCalendarCard } from "./google-calendar-card";
+import { useCallback, useEffect, useState } from "react";
+import {
+	OAuthIntegrationCard,
+	type ConnectionStatus,
+} from "./oauth-integration-card";
 
 type ScheduledMeeting = {
 	id: string;
@@ -39,6 +43,7 @@ export function SettingsClient() {
 		ScheduledMeeting[]
 	>([]);
 	const [loadingMeetings, setLoadingMeetings] = useState(true);
+	const [connections, setConnections] = useState<ConnectionStatus[]>([]);
 
 	const fetchMeetings = () => {
 		setLoadingMeetings(true);
@@ -49,9 +54,30 @@ export function SettingsClient() {
 			.finally(() => setLoadingMeetings(false));
 	};
 
+	const fetchConnections = useCallback(() => {
+		fetch("/api/oauth/status")
+			.then((res) => res.json())
+			.then((data) => setConnections(data.connections ?? []))
+			.catch(() => {});
+	}, []);
+
 	useEffect(() => {
-		if (isLoaded) fetchMeetings();
-	}, [isLoaded]);
+		if (!isLoaded) return;
+		fetchMeetings();
+		fetchConnections();
+
+		const params = new URLSearchParams(window.location.search);
+		const oauthSuccess = params.get("oauth_success");
+		const oauthError = params.get("oauth_error");
+		if (oauthSuccess) {
+			notify("success", { title: `${oauthSuccess} connected successfully` });
+			window.history.replaceState({}, "", "/settings");
+		}
+		if (oauthError) {
+			notify("error", { title: `OAuth error: ${oauthError}` });
+			window.history.replaceState({}, "", "/settings");
+		}
+	}, [isLoaded, fetchConnections]);
 
 	const copyCode = (code: string) => {
 		navigator.clipboard.writeText(code);
@@ -203,8 +229,22 @@ export function SettingsClient() {
 					<h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
 						Integrations
 					</h2>
-					<GitHubCard />
-					<GoogleCalendarCard />
+					{getAllIntegrations().map((config) => {
+						const Icon = providerIcons[config.provider];
+						const connection =
+							connections.find(
+								(c) => c.provider === config.provider,
+							) ?? null;
+						return (
+							<OAuthIntegrationCard
+								key={config.provider}
+								config={config}
+								connection={connection}
+								icon={<Icon className="h-5 w-5" />}
+								onDisconnected={fetchConnections}
+							/>
+						);
+					})}
 				</div>
 			</div>
 

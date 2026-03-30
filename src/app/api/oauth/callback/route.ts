@@ -45,19 +45,48 @@ export async function GET(req: Request) {
 	const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
 	const redirectUri = `${baseUrl}/api/oauth/callback`;
 
-	const tokenRes = await fetch(config.tokenUrl, {
-		method: "POST",
-		headers: {
-			"Content-Type": "application/x-www-form-urlencoded",
-			Accept: "application/json",
-		},
-		body: new URLSearchParams({
-			client_id: clientId,
-			client_secret: clientSecret,
+	const useBasicAuth = config.tokenAuthMethod === "basic";
+	const useJson = config.tokenContentType === "json";
+
+	const headers: Record<string, string> = {
+		Accept: "application/json",
+	};
+
+	if (useBasicAuth) {
+		headers.Authorization = `Basic ${Buffer.from(`${clientId}:${clientSecret}`).toString("base64")}`;
+	}
+
+	let body: string;
+	if (useJson) {
+		headers["Content-Type"] = "application/json";
+		const payload: Record<string, string> = {
 			code,
 			redirect_uri: redirectUri,
 			grant_type: "authorization_code",
-		}),
+		};
+		if (!useBasicAuth) {
+			payload.client_id = clientId;
+			payload.client_secret = clientSecret;
+		}
+		body = JSON.stringify(payload);
+	} else {
+		headers["Content-Type"] = "application/x-www-form-urlencoded";
+		const payload: Record<string, string> = {
+			code,
+			redirect_uri: redirectUri,
+			grant_type: "authorization_code",
+		};
+		if (!useBasicAuth) {
+			payload.client_id = clientId;
+			payload.client_secret = clientSecret;
+		}
+		body = new URLSearchParams(payload).toString();
+	}
+
+	const tokenRes = await fetch(config.tokenUrl, {
+		method: "POST",
+		headers,
+		body,
 	});
 
 	const tokenData = await tokenRes.json();
@@ -69,6 +98,7 @@ export async function GET(req: Request) {
 	const accountLabel = await fetchAccountLabel(
 		config.provider,
 		tokenData.access_token,
+		tokenData,
 	);
 
 	// Upsert the connection
@@ -117,6 +147,7 @@ export async function GET(req: Request) {
 async function fetchAccountLabel(
 	provider: string,
 	accessToken: string,
+	tokenData: Record<string, unknown>,
 ): Promise<string | null> {
 	try {
 		if (provider === "google") {
@@ -136,6 +167,9 @@ async function fetchAccountLabel(
 			});
 			const data = await res.json();
 			return data.login ?? data.email ?? null;
+		}
+		if (provider === "notion") {
+			return (tokenData.workspace_name as string) ?? null;
 		}
 		return null;
 	} catch {

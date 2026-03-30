@@ -43,14 +43,23 @@ export async function GET(req: Request) {
 	const params = new URLSearchParams({
 		client_id: clientId,
 		redirect_uri: redirectUri,
-		scope: config.scopes.join(" "),
 		state: `${provider}:${state}`,
 		response_type: "code",
 	});
 
+	if (config.scopes.length > 0) {
+		params.set("scope", config.scopes.join(" "));
+	}
+
 	if (provider === "google") {
 		params.set("access_type", "offline");
 		params.set("prompt", "consent");
+	}
+
+	if (config.authorizeParams) {
+		for (const [key, value] of Object.entries(config.authorizeParams)) {
+			params.set(key, value);
+		}
 	}
 
 	return redirect(`${config.authorizeUrl}?${params.toString()}`);

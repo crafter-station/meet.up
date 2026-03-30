@@ -1,4 +1,4 @@
-export type IntegrationProvider = "google" | "github";
+export type IntegrationProvider = "google" | "github" | "notion";
 
 export interface IntegrationConfig {
 	provider: IntegrationProvider;
@@ -11,6 +11,12 @@ export interface IntegrationConfig {
 	envClientId: string;
 	envClientSecret: string;
 	supportsRefresh: boolean;
+	/** How to authenticate the token exchange request. Default: "body" */
+	tokenAuthMethod?: "body" | "basic";
+	/** Content type for the token exchange request. Default: "form" */
+	tokenContentType?: "form" | "json";
+	/** Extra query params to add to the authorize URL */
+	authorizeParams?: Record<string, string>;
 }
 
 export const integrations: Record<IntegrationProvider, IntegrationConfig> = {
@@ -44,6 +50,23 @@ export const integrations: Record<IntegrationProvider, IntegrationConfig> = {
 		envClientId: "GITHUB_CLIENT_ID",
 		envClientSecret: "GITHUB_CLIENT_SECRET",
 		supportsRefresh: false,
+	},
+	notion: {
+		provider: "notion",
+		displayName: "Notion",
+		description:
+			"Connect your Notion workspace to let the AI assistant search, read, and create pages during meetings.",
+		connectedDescription:
+			"Connected \u2014 the AI assistant can search, read, and create Notion pages during meetings.",
+		authorizeUrl: "https://api.notion.com/v1/oauth/authorize",
+		tokenUrl: "https://api.notion.com/v1/oauth/token",
+		scopes: [],
+		envClientId: "NOTION_CLIENT_ID",
+		envClientSecret: "NOTION_CLIENT_SECRET",
+		supportsRefresh: false,
+		tokenAuthMethod: "basic",
+		tokenContentType: "json",
+		authorizeParams: { owner: "user" },
 	},
 };
 

@@ -42,6 +42,30 @@ async function initGitHubMCP(
   return { client, tools: mcpTools };
 }
 
+async function initNotionMCP(
+  userId: string,
+): Promise<{ client: MCPClient; tools: Record<string, unknown> } | null> {
+  const notionToken = await getValidAccessToken(userId, "notion");
+  if (!notionToken) return null;
+
+  const transport = new Experimental_StdioMCPTransport({
+    command: "npx",
+    args: ["-y", "@notionhq/notion-mcp-server"],
+    env: {
+      ...process.env,
+      OPENAPI_MCP_HEADERS: JSON.stringify({
+        Authorization: `Bearer ${notionToken}`,
+        "Notion-Version": "2022-06-28",
+      }),
+    } as Record<string, string>,
+  });
+
+  const client = await createMCPClient({ transport });
+  const mcpTools = await client.tools();
+
+  return { client, tools: mcpTools };
+}
+
 async function initGoogleCalendar(
   userId: string,
 ): Promise<ReturnType<typeof googleCalendarTools> | null> {
@@ -62,12 +86,18 @@ export async function POST(req: Request) {
     const modelMessages = await convertToModelMessages(messages);
 
     let github: Awaited<ReturnType<typeof initGitHubMCP>> = null;
+    let notion: Awaited<ReturnType<typeof initNotionMCP>> = null;
     let googleCalendar: ReturnType<typeof googleCalendarTools> | null = null;
     if (userId) {
       try {
         github = await initGitHubMCP(userId);
       } catch (e) {
         console.error("Failed to initialize GitHub MCP:", e);
+      }
+      try {
+        notion = await initNotionMCP(userId);
+      } catch (e) {
+        console.error("Failed to initialize Notion MCP:", e);
       }
       try {
         googleCalendar = await initGoogleCalendar(userId);
@@ -87,6 +117,7 @@ export async function POST(req: Request) {
 
     const basePrompt = getSystemPrompt({
       hasGitHub: !!github,
+      hasNotion: !!notion,
       hasGoogleCalendar: !!googleCalendar,
       hasMeetingTools: !!meetingToolset,
     });
@@ -98,13 +129,15 @@ export async function POST(req: Request) {
       model: gateway("anthropic/claude-sonnet-4-6"),
       system,
       messages: modelMessages,
-      tools: { ...tools(), ...getCurrentTimeTool(), ...github?.tools, ...googleCalendar, ...meetingToolset },
+      tools: { ...tools(), ...getCurrentTimeTool(), ...github?.tools, ...notion?.tools, ...googleCalendar, ...meetingToolset },
       stopWhen: stepCountIs(5),
       onFinish: async () => {
         await github?.client.close();
+        await notion?.client.close();
       },
       onError: async () => {
         await github?.client.close();
+        await notion?.client.close();
       },
     });
 

@@ -121,3 +121,22 @@ export function showJoinRequestBrowserNotification(username: string) {
     // Some environments throw despite permission (e.g. policy)
   }
 }
+
+/**
+ * Native OS notification when a participant joins the call.
+ * Only fires when the tab is hidden so it doesn't interrupt active use.
+ */
+export function showParticipantJoinedNotification(username: string) {
+  if (!browserNotificationsSupported()) return;
+  if (Notification.permission !== "granted") return;
+  if (typeof document !== "undefined" && !document.hidden) return;
+
+  try {
+    new Notification("Someone joined", {
+      body: `${username} entered the meeting.`,
+      tag: `meetup-joined:${username}`,
+    });
+  } catch {
+    // Some environments throw despite permission (e.g. policy)
+  }
+}

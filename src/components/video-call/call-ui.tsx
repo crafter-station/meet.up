@@ -5,9 +5,11 @@ import { useAdmission } from "@/hooks/use-admission";
 import { useRealtimeChat } from "@/hooks/use-realtime-chat";
 import { useTranscription } from "@/hooks/use-transcription";
 import { useVoiceActions } from "@/hooks/use-voice-actions";
+import { showParticipantJoinedNotification } from "@/lib/notify";
 import {
   DailyAudio,
   useActiveSpeakerId,
+  useDailyEvent,
   useParticipantIds,
 } from "@daily-co/daily-react";
 import { Check, X } from "lucide-react";
@@ -52,6 +54,15 @@ export function CallUI({
 }: CallUIProps) {
   const participantIds = useParticipantIds();
   const activeSpeakerId = useActiveSpeakerId();
+
+  useDailyEvent(
+    "participant-joined",
+    useCallback((event) => {
+      const name = event?.participant?.user_name;
+      if (name) showParticipantJoinedNotification(name);
+    }, []),
+  );
+
   const [showPanel, setShowPanel] = useState(true);
   const [mobileTranscriptionOpen, setMobileTranscriptionOpen] = useState(true);
   const [voiceActionsEnabled, setVoiceActionsEnabled] = useState(true);

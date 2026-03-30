@@ -1,6 +1,9 @@
 "use client";
 
-import { playAdmissionRequestSound } from "@/lib/notify";
+import {
+	playAdmissionRequestSound,
+	showJoinRequestBrowserNotification,
+} from "@/lib/notify";
 import { getSupabaseClient } from "@/lib/supabase";
 import { useCallback, useEffect, useRef, useState } from "react";
 
@@ -139,6 +142,7 @@ export function useAdmission({
 								);
 								if (!alreadyQueued) {
 									playAdmissionRequestSound();
+									showJoinRequestBrowserNotification(payload.username);
 								}
 								setPendingRequests((prev) => {
 									if (prev.some((r) => r.username === payload.username))

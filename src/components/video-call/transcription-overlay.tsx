@@ -38,7 +38,14 @@ import {
   Search,
   X,
 } from "lucide-react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { createPortal } from "react-dom";
 
 const PANEL_WIDTH = 44 * 16;
@@ -377,18 +384,34 @@ export function TranscriptionOverlay({
   }, [filteredTranscripts]);
 
   const scrollRef = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    const el = scrollRef.current;
-    if (el) el.scrollTop = el.scrollHeight;
-  }, [transcriptMessages.length, activePartials.length]);
+  /** Set when user minimizes transcript; restored on next expand. `null` = never minimized this session. */
+  const savedTranscriptScrollRef = useRef<number | null>(null);
+  /** After first transcript layout, skip default jump-to-end unless restoring from minimize. */
+  const transcriptScrollBootstrappedRef = useRef(false);
 
-  useEffect(() => {
+  const saveTranscriptScrollAndMinimize = useCallback(() => {
+    const el = scrollRef.current;
+    if (el) savedTranscriptScrollRef.current = el.scrollTop;
+    setMinimized(true);
+  }, []);
+
+  useLayoutEffect(() => {
     if (minimized) return;
-    requestAnimationFrame(() => {
-      const el = scrollRef.current;
-      if (el) el.scrollTop = el.scrollHeight;
-    });
-  }, [minimized]);
+    if (panelView !== "transcript") return;
+    const el = scrollRef.current;
+    if (!el) return;
+    if (savedTranscriptScrollRef.current !== null) {
+      const max = Math.max(0, el.scrollHeight - el.clientHeight);
+      const y = Math.min(Math.max(0, savedTranscriptScrollRef.current), max);
+      savedTranscriptScrollRef.current = null;
+      el.scrollTop = y;
+      return;
+    }
+    if (!transcriptScrollBootstrappedRef.current) {
+      el.scrollTop = el.scrollHeight;
+      transcriptScrollBootstrappedRef.current = true;
+    }
+  }, [minimized, panelView]);
 
   // ── Desktop drag ───────────────────────────────────────────────
   useEffect(() => {
@@ -757,7 +780,7 @@ export function TranscriptionOverlay({
               <button
                 className="text-muted-foreground hover:text-foreground p-1 rounded-md hover:bg-white/5 transition-colors"
                 onPointerDown={(e) => e.stopPropagation()}
-                onClick={() => setMinimized(true)}
+                onClick={saveTranscriptScrollAndMinimize}
                 title="Minimize"
               >
                 <Minus className="h-4 w-4" />

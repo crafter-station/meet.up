@@ -1,5 +1,7 @@
 "use client";
 
+import { nanoid } from "nanoid";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
 	addFeedItem as addFeedItemAction,
 	getFeedItems,
@@ -8,9 +10,12 @@ import {
 	sendMessage,
 	updateFeedItem as updateFeedItemAction,
 } from "@/app/actions";
-import type { ChatMessage, FeedItem } from "@/components/video-call/types";
+import type {
+	ChatMessage,
+	FeedItem,
+	FlyingReactionPayload,
+} from "@/components/video-call/types";
 import { getSupabaseClient } from "@/lib/supabase";
-import { useCallback, useEffect, useRef, useState } from "react";
 
 type ChatEvent =
 	| { type: "message:add"; message: ChatMessage }
@@ -19,7 +24,34 @@ type ChatEvent =
 	| { type: "meeting:ended" }
 	| { type: "feeditem:add"; item: FeedItem }
 	| { type: "feeditem:update"; id: string; updates: Partial<FeedItem> }
-	| { type: "feeditems:sync"; items: FeedItem[] };
+	| { type: "feeditems:sync"; items: FeedItem[] }
+	| { type: "reaction:flying"; reaction: FlyingReactionPayload };
+
+const MAX_FLYING_REACTIONS = 48;
+
+function buildFlyingReaction(
+	emoji: string,
+	fromUsername: string,
+): FlyingReactionPayload {
+	const h = typeof window !== "undefined" ? window.innerHeight : 640;
+	const originX = 0.28 + Math.random() * 0.44;
+	const driftX = (Math.random() - 0.5) * 100;
+	const arcX = driftX * 0.35 + (Math.random() - 0.5) * 48;
+	const travelY = -(0.52 + Math.random() * 0.22) * h;
+	const durationMs = 2300 + Math.floor(Math.random() * 1800);
+	const rotateDeg = (Math.random() - 0.5) * 22;
+	return {
+		id: nanoid(12),
+		emoji: emoji.slice(0, 8),
+		fromUsername,
+		originX,
+		driftX,
+		arcX,
+		travelY,
+		durationMs,
+		rotateDeg,
+	};
+}
 
 interface UseRealtimeChatOptions {
 	onMeetingEnded?: () => void;
@@ -34,9 +66,10 @@ export function useRealtimeChat(
 	onMeetingEndedRef.current = options?.onMeetingEnded;
 	const [messages, setMessages] = useState<ChatMessage[]>([]);
 	const [feedItems, setFeedItems] = useState<FeedItem[]>([]);
-	const [partialTexts, setPartialTexts] = useState<
-		Record<string, string>
-	>({});
+	const [partialTexts, setPartialTexts] = useState<Record<string, string>>({});
+	const [flyingReactions, setFlyingReactions] = useState<
+		FlyingReactionPayload[]
+	>([]);
 	const channelRef = useRef<ReturnType<
 		ReturnType<typeof getSupabaseClient>["channel"]
 	> | null>(null);
@@ -88,9 +121,7 @@ export function useRealtimeChat(
 			.on(
 				"broadcast",
 				{ event: "chat-event" },
-				({
-					payload,
-				}: { payload: ChatEvent & { username: string } }) => {
+				({ payload }: { payload: ChatEvent & { username: string } }) => {
 					if (payload.username === username) return;
 
 					switch (payload.type) {
@@ -127,8 +158,7 @@ export function useRealtimeChat(
 							break;
 						case "feeditem:add":
 							setFeedItems((prev) => {
-								if (prev.some((f) => f.id === payload.item.id))
-									return prev;
+								if (prev.some((f) => f.id === payload.item.id)) return prev;
 								return [...prev, payload.item];
 							});
 							break;
@@ -152,6 +182,11 @@ export function useRealtimeChat(
 							break;
 						case "meeting:ended":
 							onMeetingEndedRef.current?.();
+							break;
+						case "reaction:flying":
+							setFlyingReactions((prev) =>
+								[...prev, payload.reaction].slice(-MAX_FLYING_REACTIONS),
+							);
 							break;
 					}
 				},
@@ -193,11 +228,7 @@ export function useRealtimeChat(
 
 	const sendAs = useCallback(
 		async (content: string, asUsername: string) => {
-			const { message, error } = await sendMessage(
-				roomId,
-				asUsername,
-				content,
-			);
+			const { message, error } = await sendMessage(roomId, asUsername, content);
 			if (error || !message) return;
 
 			const chatMsg: ChatMessage = { ...message, type: "chat" };
@@ -276,6 +307,29 @@ export function useRealtimeChat(
 		});
 	}, [username]);
 
+	const removeFlyingReaction = useCallback((id: string) => {
+		setFlyingReactions((prev) => prev.filter((r) => r.id !== id));
+	}, []);
+
+	const sendFlyingReaction = useCallback(
+		(emoji: string) => {
+			const reaction = buildFlyingReaction(emoji, username);
+			setFlyingReactions((prev) =>
+				[...prev, reaction].slice(-MAX_FLYING_REACTIONS),
+			);
+			channelRef.current?.send({
+				type: "broadcast",
+				event: "chat-event",
+				payload: {
+					type: "reaction:flying",
+					reaction,
+					username,
+				} satisfies ChatEvent & { username: string },
+			});
+		},
+		[username],
+	);
+
 	const addFeedItem = useCallback(
 		async (item: {
 			type: string;
@@ -316,7 +370,9 @@ export function useRealtimeChat(
 
 			setFeedItems((prev) =>
 				prev.map((f) =>
-					f.id === itemId ? ({ ...f, ...updates, updatedAt: Date.now() } as FeedItem) : f,
+					f.id === itemId
+						? ({ ...f, ...updates, updatedAt: Date.now() } as FeedItem)
+						: f,
 				),
 			);
 
@@ -338,6 +394,9 @@ export function useRealtimeChat(
 		messages,
 		feedItems,
 		partialTexts,
+		flyingReactions,
+		removeFlyingReaction,
+		sendFlyingReaction,
 		send,
 		sendAs,
 		addTranscript,

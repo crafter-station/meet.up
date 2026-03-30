@@ -30,7 +30,7 @@ export function playAdmissionRequestSound() {
   try {
     const ctx = new AudioContext();
     const master = ctx.createGain();
-    master.gain.value = 0.09;
+    master.gain.value = 1.15;
     master.connect(ctx.destination);
 
     const note = (freq: number, when: number, len: number) => {
@@ -74,3 +74,50 @@ export function notify(
 }
 
 export { sileo };
+
+/** True when the Notifications API is available (secure context, modern browser). */
+export function browserNotificationsSupported(): boolean {
+  return (
+    typeof window !== "undefined" &&
+    "Notification" in window &&
+    typeof Notification.requestPermission === "function"
+  );
+}
+
+export type JoinRequestNotificationPermission =
+  | NotificationPermission
+  | "unsupported";
+
+export function getJoinRequestNotificationPermission(): JoinRequestNotificationPermission {
+  if (!browserNotificationsSupported()) return "unsupported";
+  return Notification.permission;
+}
+
+/** Must be called from a user gesture for best results (browser policy). */
+export async function requestJoinRequestNotificationPermission(): Promise<
+  Exclude<JoinRequestNotificationPermission, "unsupported">
+> {
+  if (!browserNotificationsSupported()) return "denied";
+  const current = Notification.permission;
+  if (current !== "default") return current;
+  return Notification.requestPermission();
+}
+
+/**
+ * Native OS notification when a guest knocks (host only).
+ * Skips when the tab is visible so the in-call UI + chime are enough.
+ */
+export function showJoinRequestBrowserNotification(username: string) {
+  if (!browserNotificationsSupported()) return;
+  if (Notification.permission !== "granted") return;
+  if (typeof document !== "undefined" && !document.hidden) return;
+
+  try {
+    new Notification("Join request", {
+      body: `${username} wants to enter the meeting.`,
+      tag: `meetup-admission:${username}`,
+    });
+  } catch {
+    // Some environments throw despite permission (e.g. policy)
+  }
+}

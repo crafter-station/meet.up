@@ -25,6 +25,7 @@ import {
 const FEED_PANEL_WIDTH_KEY = "meetup.feedPanelWidth";
 const DEFAULT_FEED_PANEL_WIDTH = 320;
 const MIN_FEED_PANEL_WIDTH = 260;
+const EXPANDED_FEED_PANEL_WIDTH = 560;
 
 function clampFeedPanelWidth(w: number): number {
   if (typeof window === "undefined") return w;
@@ -68,6 +69,23 @@ export function CallUI({
     return DEFAULT_FEED_PANEL_WIDTH;
   });
   const [isDesktopSidebar, setIsDesktopSidebar] = useState(false);
+  const [feedExpanded, setFeedExpanded] = useState(false);
+  const preExpandWidthRef = useRef(DEFAULT_FEED_PANEL_WIDTH);
+
+  const toggleFeedExpand = useCallback(() => {
+    setFeedExpanded((prev) => {
+      if (!prev) {
+        // Expanding: save current width, switch to expanded
+        preExpandWidthRef.current = feedPanelWidth;
+        const expanded = clampFeedPanelWidth(EXPANDED_FEED_PANEL_WIDTH);
+        setFeedPanelWidth(expanded);
+      } else {
+        // Collapsing: restore previous width
+        setFeedPanelWidth(clampFeedPanelWidth(preExpandWidthRef.current));
+      }
+      return !prev;
+    });
+  }, [feedPanelWidth]);
 
   useEffect(() => {
     const mq = window.matchMedia("(min-width: 768px)");
@@ -342,6 +360,8 @@ export function CallUI({
               onAddFeedItem={addFeedItem}
               onUpdateFeedItem={updateFeedItem}
               username={username}
+              expanded={feedExpanded}
+              onToggleExpand={isDesktopSidebar ? toggleFeedExpand : undefined}
             />
           </div>
         )}

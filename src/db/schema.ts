@@ -1,4 +1,4 @@
-import { boolean, integer, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
+import { boolean, integer, pgTable, text, timestamp, uniqueIndex, uuid } from "drizzle-orm/pg-core";
 
 export const anonymousUsers = pgTable("anonymous_users", {
 	id: text("id").primaryKey(), // fingerprint visitorId
@@ -81,6 +81,28 @@ export const meetingInvitees = pgTable("meeting_invitees", {
 	emailSentAt: timestamp("email_sent_at"),
 	createdAt: timestamp("created_at").defaultNow().notNull(),
 });
+
+export const oauthConnections = pgTable(
+	"oauth_connections",
+	{
+		id: text("id").primaryKey(),
+		clerkUserId: text("clerk_user_id").notNull(),
+		provider: text("provider").notNull(),
+		accessToken: text("access_token").notNull(),
+		refreshToken: text("refresh_token"),
+		tokenExpiresAt: timestamp("token_expires_at"),
+		scopes: text("scopes"),
+		accountLabel: text("account_label"),
+		createdAt: timestamp("created_at").defaultNow().notNull(),
+		updatedAt: timestamp("updated_at").defaultNow().notNull(),
+	},
+	(table) => [
+		uniqueIndex("oauth_connections_user_provider_idx").on(
+			table.clerkUserId,
+			table.provider,
+		),
+	],
+);
 
 export const meetingSummaries = pgTable("meeting_summaries", {
 	id: text("id").primaryKey(),

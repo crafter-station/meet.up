@@ -1,7 +1,8 @@
 import { gateway } from "@ai-sdk/gateway";
 import { createMCPClient } from "@ai-sdk/mcp";
 import { Experimental_StdioMCPTransport } from "@ai-sdk/mcp/mcp-stdio";
-import { auth, clerkClient } from "@clerk/nextjs/server";
+import { auth } from "@clerk/nextjs/server";
+import { getValidAccessToken } from "@/lib/integrations/token-service";
 import {
   convertToModelMessages,
   streamText,
@@ -23,12 +24,7 @@ type MCPClient = Awaited<ReturnType<typeof createMCPClient>>;
 async function initGitHubMCP(
   userId: string,
 ): Promise<{ client: MCPClient; tools: Record<string, unknown> } | null> {
-  const clerk = await clerkClient();
-  const tokens = await clerk.users.getUserOauthAccessToken(
-    userId,
-    "oauth_github",
-  );
-  const githubToken = tokens.data[0]?.token;
+  const githubToken = await getValidAccessToken(userId, "github");
   if (!githubToken) return null;
 
   const transport = new Experimental_StdioMCPTransport({
@@ -49,12 +45,7 @@ async function initGitHubMCP(
 async function initGoogleCalendar(
   userId: string,
 ): Promise<ReturnType<typeof googleCalendarTools> | null> {
-  const clerk = await clerkClient();
-  const tokens = await clerk.users.getUserOauthAccessToken(
-    userId,
-    "oauth_google",
-  );
-  const googleToken = tokens.data[0]?.token;
+  const googleToken = await getValidAccessToken(userId, "google");
   if (!googleToken) return null;
 
   return googleCalendarTools(googleToken);

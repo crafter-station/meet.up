@@ -16,7 +16,14 @@ export interface EmailService {
 }
 
 class ResendEmailService implements EmailService {
-	private client = new Resend(process.env.RESEND_API_KEY!);
+	private _client: Resend | null = null;
+
+	private get client(): Resend {
+		if (!this._client) {
+			this._client = new Resend(process.env.RESEND_API_KEY!);
+		}
+		return this._client;
+	}
 
 	async send(payload: EmailPayload): Promise<EmailResult> {
 		const { data, error } = await this.client.emails.send({

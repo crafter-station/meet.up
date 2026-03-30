@@ -36,6 +36,7 @@
     "googleapis": "^171.4.0",
     "ioredis": "^5.10.1",
     "lucide-react": "^1.7.0",
+    "minio": "^8.0.7",
     "nanoid": "^5.1.7",
     "next": "16.2.1",
     "postgres": "^3.4.8",

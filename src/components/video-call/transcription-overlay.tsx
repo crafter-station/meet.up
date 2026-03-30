@@ -21,7 +21,7 @@ import {
 import { Input } from "@/components/ui/input";
 import type { ChatMessage } from "@/components/video-call/types";
 import { notify } from "@/lib/notify";
-import { useChat } from "@ai-sdk/react";
+import { useChat, type UIMessage } from "@ai-sdk/react";
 import type { ToolUIPart } from "ai";
 import { DefaultChatTransport } from "ai";
 import {
@@ -30,6 +30,7 @@ import {
   ChevronDown,
   Copy,
   GripHorizontal,
+  History,
   LayoutList,
   MessageSquare,
   Minus,
@@ -145,6 +146,28 @@ const DEFAULT_SUGGESTIONS = [
   "Write tldr",
 ];
 
+// ── Chat history helpers ────────────────────────────────────────
+interface ChatHistoryEntry {
+  id: string;
+  messages: UIMessage[];
+  preview: string;
+  createdAt: number;
+}
+
+function getChatPreview(messages: UIMessage[]): string {
+  const first = messages.find((m) => m.role === "user");
+  if (!first) return "Empty chat";
+  const text = first.parts
+    .filter((p): p is { type: "text"; text: string } => p.type === "text")
+    .map((p) => p.text)
+    .join(" ");
+  return text.slice(0, 80) || "Empty chat";
+}
+
+export interface TranscriptionOverlayHandle {
+  sendAiMessage: (text: string) => void;
+}
+
 interface TranscriptionOverlayProps {
   username: string;
   roomId: string;
@@ -160,6 +183,7 @@ interface TranscriptionOverlayProps {
     stop: () => void;
   };
   onPinToFeed?: (content: string, title?: string, metadata?: string) => void;
+  handleRef?: React.RefObject<TranscriptionOverlayHandle | null>;
 }
 
 export function TranscriptionOverlay({
@@ -172,6 +196,7 @@ export function TranscriptionOverlay({
   isOwner = false,
   transcription,
   onPinToFeed,
+  handleRef,
 }: TranscriptionOverlayProps) {
   const isMobile = useIsMobile();
   const panelRef = useRef<HTMLDivElement>(null);
@@ -268,6 +293,8 @@ export function TranscriptionOverlay({
   const [aiInput, setAiInput] = useState("");
   const aiInputRef = useRef<HTMLInputElement>(null);
   const aiScrollRef = useRef<HTMLDivElement>(null);
+  const chatFileInputRef = useRef<HTMLInputElement>(null);
+  const [pendingFiles, setPendingFiles] = useState<File[]>([]);
 
   // Build transcript text to send as context
   const transcriptText = useMemo(() => {
@@ -302,6 +329,22 @@ export function TranscriptionOverlay({
 
   const isAiLoading = aiStatus === "streaming" || aiStatus === "submitted";
 
+  // ── Chat history ───────────────────────────────────────────────
+  const [chatHistory, setChatHistory] = useState<ChatHistoryEntry[]>([]);
+  const [activeChatId, setActiveChatId] = useState<string | null>(null);
+  const [showHistory, setShowHistory] = useState(false);
+  const historyDropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!showHistory) return;
+    const onPointerDown = (e: PointerEvent) => {
+      if (historyDropdownRef.current?.contains(e.target as Node)) return;
+      setShowHistory(false);
+    };
+    document.addEventListener("pointerdown", onPointerDown);
+    return () => document.removeEventListener("pointerdown", onPointerDown);
+  }, [showHistory]);
+
   const { suggestionsTitle, suggestions } = useMemo(() => {
     const lastAssistant = [...aiMessages]
       .reverse()
@@ -324,22 +367,131 @@ export function TranscriptionOverlay({
     if (el) el.scrollTop = el.scrollHeight;
   }, [aiMessages.length]);
 
-  const sendAiMessage = useCallback(
-    (text: string) => {
-      const trimmed = text.trim();
-      if (!trimmed || isAiLoading) return;
-      setAiInput("");
-      setPanelView("chat");
-      sendMessage({ text: trimmed });
+  const handleChatFileSelect = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+      e.target.value = "";
+      if (file.size > 10 * 1024 * 1024) {
+        notify("error", { title: "File must be under 10 MB" });
+        return;
+      }
+      setPendingFiles((prev) => [...prev, file]);
     },
-    [isAiLoading, sendMessage],
+    [],
   );
 
+  const sendAiMessage = useCallback(
+    async (text: string) => {
+      const trimmed = text.trim();
+      if (!trimmed && pendingFiles.length === 0) return;
+      if (isAiLoading) return;
+      setAiInput("");
+      setPanelView("chat");
+
+      const filesToSend = [...pendingFiles];
+      setPendingFiles([]);
+
+      if (filesToSend.length > 0) {
+        // Separate media files (images/PDFs) from text-based files
+        const mediaFiles: File[] = [];
+        const textContents: string[] = [];
+
+        await Promise.all(
+          filesToSend.map(async (file) => {
+            if (
+              file.type.startsWith("image/") ||
+              file.type === "application/pdf"
+            ) {
+              mediaFiles.push(file);
+            } else {
+              // Read text-based files and inline their content
+              const content = await file.text();
+              textContents.push(
+                `--- ${file.name} ---\n${content}\n--- end ${file.name} ---`,
+              );
+            }
+          }),
+        );
+
+        let messageText = trimmed;
+        if (textContents.length > 0) {
+          const fileContext = textContents.join("\n\n");
+          messageText = messageText
+            ? `${messageText}\n\nAttached file contents:\n${fileContext}`
+            : `Please analyze the following file contents:\n\n${fileContext}`;
+        }
+        if (!messageText && mediaFiles.length > 0) {
+          messageText = `I've attached ${mediaFiles.length === 1 ? "a file" : `${mediaFiles.length} files`}. Please analyze ${mediaFiles.length === 1 ? "it" : "them"}.`;
+        }
+
+        if (mediaFiles.length > 0) {
+          const dt = new DataTransfer();
+          for (const f of mediaFiles) dt.items.add(f);
+          sendMessage({ text: messageText, files: dt.files });
+        } else {
+          sendMessage({ text: messageText });
+        }
+      } else {
+        sendMessage({ text: trimmed });
+      }
+    },
+    [isAiLoading, sendMessage, pendingFiles],
+  );
+
+  // Expose sendAiMessage to parent via ref
+  useEffect(() => {
+    if (handleRef) handleRef.current = { sendAiMessage };
+  }, [handleRef, sendAiMessage]);
+
+  const saveCurrentToHistory = useCallback(() => {
+    if (aiMessages.length === 0) return;
+    const id = activeChatId ?? crypto.randomUUID();
+    const preview = getChatPreview(aiMessages);
+    setChatHistory((prev) => {
+      const idx = prev.findIndex((e) => e.id === id);
+      const entry: ChatHistoryEntry = {
+        id,
+        messages: [...aiMessages],
+        preview,
+        createdAt: idx >= 0 ? prev[idx].createdAt : Date.now(),
+      };
+      if (idx >= 0) {
+        const updated = [...prev];
+        updated[idx] = entry;
+        return updated;
+      }
+      return [...prev, entry];
+    });
+    return id;
+  }, [aiMessages, activeChatId]);
+
   const newChat = useCallback(() => {
+    saveCurrentToHistory();
+    setActiveChatId(null);
     setAiMessages([]);
     setPanelView("chat");
+    setShowHistory(false);
     setTimeout(() => aiInputRef.current?.focus(), 50);
-  }, [setAiMessages]);
+  }, [saveCurrentToHistory, setAiMessages]);
+
+  const switchToChat = useCallback(
+    (id: string) => {
+      saveCurrentToHistory();
+      const entry = chatHistory.find((e) => e.id === id);
+      if (entry) {
+        setActiveChatId(id);
+        setAiMessages(entry.messages);
+        setPanelView("chat");
+        setShowHistory(false);
+      }
+    },
+    [saveCurrentToHistory, chatHistory, setAiMessages],
+  );
+
+  const deleteHistoryEntry = useCallback((id: string) => {
+    setChatHistory((prev) => prev.filter((e) => e.id !== id));
+  }, []);
 
   // ── Data ───────────────────────────────────────────────────────
   const transcriptMessages = useMemo(
@@ -575,6 +727,27 @@ export function TranscriptionOverlay({
   // ── AI chat input bar ──────────────────────────────────────────
   const chatInputBar = (
     <div className="px-3 pb-2 pt-1 shrink-0">
+      {pendingFiles.length > 0 && (
+        <div className="flex flex-wrap gap-1.5 mb-1.5 px-1">
+          {pendingFiles.map((f, i) => (
+            <div
+              key={`${f.name}-${i}`}
+              className="flex items-center gap-1 rounded-full bg-muted/50 border border-border/40 px-2 py-0.5 text-[11px] text-muted-foreground"
+            >
+              <Paperclip className="h-2.5 w-2.5 shrink-0" />
+              <span className="max-w-[120px] truncate">{f.name}</span>
+              <button
+                className="hover:text-foreground"
+                onClick={() =>
+                  setPendingFiles((prev) => prev.filter((_, idx) => idx !== i))
+                }
+              >
+                <X className="h-2.5 w-2.5" />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
       <div className="flex items-center gap-2 rounded-full border border-[#6b7a2f]/60 bg-muted/30 px-4 py-1.5">
         <input
           ref={aiInputRef}
@@ -591,12 +764,24 @@ export function TranscriptionOverlay({
         />
         <span className="text-[11px] text-muted-foreground/50">Auto</span>
         <ChevronDown className="h-3 w-3 text-muted-foreground/50" />
-        <button className="text-muted-foreground/50 hover:text-muted-foreground">
+        <button
+          className="text-muted-foreground/50 hover:text-muted-foreground disabled:opacity-30"
+          onClick={() => chatFileInputRef.current?.click()}
+        >
           <Paperclip className="h-3.5 w-3.5" />
         </button>
+        <input
+          ref={chatFileInputRef}
+          type="file"
+          className="hidden"
+          accept="image/*,.pdf,.txt,.md,.csv,.json"
+          onChange={handleChatFileSelect}
+        />
         <button
           className="flex h-6 w-6 items-center justify-center rounded-full bg-[#6b7a2f] text-white hover:bg-[#7d8e36] transition-colors disabled:opacity-30"
-          disabled={!aiInput.trim() || isAiLoading}
+          disabled={
+            (!aiInput.trim() && pendingFiles.length === 0) || isAiLoading
+          }
           onClick={() => sendAiMessage(aiInput)}
         >
           <ArrowUp className="h-3.5 w-3.5" />
@@ -818,6 +1003,48 @@ export function TranscriptionOverlay({
             <ChevronDown className="h-3 w-3 text-muted-foreground" />
           </button>
           <div className="flex-1" />
+          {chatHistory.length > 0 && (
+            <div className="relative" ref={historyDropdownRef}>
+              <button
+                className="text-muted-foreground hover:text-foreground p-1 rounded-md hover:bg-white/5 transition-colors"
+                onPointerDown={(e) => e.stopPropagation()}
+                onClick={() => setShowHistory((prev) => !prev)}
+                title="Chat history"
+              >
+                <History className="h-4 w-4" />
+              </button>
+              {showHistory && (
+                <div className="absolute right-0 top-full mt-1 w-64 max-h-52 overflow-y-auto rounded-lg border border-border/50 bg-background/95 backdrop-blur-xl shadow-xl z-50">
+                  <div className="px-3 py-1.5 text-[10px] font-medium text-muted-foreground/60 uppercase tracking-wider border-b border-border/30">
+                    Previous chats
+                  </div>
+                  {chatHistory.map((entry) => (
+                    <div
+                      key={entry.id}
+                      className={`group flex items-center gap-2 px-3 py-2 text-xs hover:bg-muted/30 transition-colors cursor-pointer ${
+                        entry.id === activeChatId
+                          ? "text-foreground bg-muted/20"
+                          : "text-muted-foreground"
+                      }`}
+                      onClick={() => switchToChat(entry.id)}
+                    >
+                      <MessageSquare className="h-3 w-3 shrink-0 opacity-50" />
+                      <span className="flex-1 truncate">{entry.preview}</span>
+                      <button
+                        className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-foreground p-0.5 rounded transition-opacity"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          deleteHistoryEntry(entry.id);
+                        }}
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
           <button
             className="flex items-center gap-1.5 rounded-full bg-muted/50 px-3 py-1 text-xs text-muted-foreground hover:text-foreground hover:bg-muted/70 transition-colors"
             onPointerDown={(e) => e.stopPropagation()}
@@ -969,6 +1196,37 @@ export function TranscriptionOverlay({
                           <MessageResponse key={key} mode="static">
                             {part.text}
                           </MessageResponse>
+                        );
+                      }
+
+                      if (part.type === "file") {
+                        const fp = part as {
+                          type: "file";
+                          mediaType: string;
+                          url: string;
+                        };
+                        if (fp.mediaType.startsWith("image/")) {
+                          return (
+                            <img
+                              key={key}
+                              src={fp.url}
+                              alt="Attached image"
+                              className="max-w-full max-h-48 rounded-lg object-contain"
+                            />
+                          );
+                        }
+                        return (
+                          <div
+                            key={key}
+                            className="flex items-center gap-1.5 rounded-md bg-muted/30 border border-border/40 px-2.5 py-1.5 text-xs text-muted-foreground"
+                          >
+                            <Paperclip className="h-3 w-3 shrink-0" />
+                            <span>
+                              {fp.mediaType === "application/pdf"
+                                ? "PDF attachment"
+                                : "File attachment"}
+                            </span>
+                          </div>
                         );
                       }
 

@@ -1,7 +1,7 @@
 "use client";
 
 import type { ChatMessage, FeedItem } from "@/components/video-call/types";
-import { LayoutList } from "lucide-react";
+import { LayoutList, Maximize2, Minimize2 } from "lucide-react";
 import { useEffect, useRef } from "react";
 import { FeedComposer } from "./feed-composer";
 import { FeedTimeline } from "./feed-timeline";
@@ -21,6 +21,10 @@ interface MeetingFeedProps {
     updates: { content?: string; title?: string; isDone?: boolean },
   ) => void;
   username: string;
+  roomId: string;
+  onFileUploaded?: (item: FeedItem) => void;
+  expanded?: boolean;
+  onToggleExpand?: () => void;
 }
 
 export function MeetingFeed({
@@ -30,6 +34,10 @@ export function MeetingFeed({
   onAddFeedItem,
   onUpdateFeedItem,
   username,
+  roomId,
+  onFileUploaded,
+  expanded,
+  onToggleExpand,
 }: MeetingFeedProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -45,6 +53,19 @@ export function MeetingFeed({
       <div className="flex items-center gap-2 px-4 py-3 border-b border-border/50 shrink-0">
         <LayoutList className="h-4 w-4 text-muted-foreground" />
         <h2 className="text-sm font-medium">Meeting Feed</h2>
+        {onToggleExpand && (
+          <button
+            className="ml-auto hidden md:flex items-center justify-center h-6 w-6 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
+            onClick={onToggleExpand}
+            title={expanded ? "Collapse panel" : "Expand panel"}
+          >
+            {expanded ? (
+              <Minimize2 className="h-3.5 w-3.5" />
+            ) : (
+              <Maximize2 className="h-3.5 w-3.5" />
+            )}
+          </button>
+        )}
       </div>
 
       {/* Timeline */}
@@ -75,6 +96,9 @@ export function MeetingFeed({
         onAddActionItem={(content) =>
           onAddFeedItem({ type: "action_item", content })
         }
+        roomId={roomId}
+        username={username}
+        onFileUploaded={onFileUploaded}
       />
     </div>
   );

@@ -16,11 +16,14 @@ import {
 } from "@/components/ui/dialog";
 import {
 	ArrowRight,
+	Calendar,
 	Captions,
 	Check,
 	ChevronDown,
 	ChevronRight,
 	Clock,
+	GitBranch,
+	Globe,
 	LogIn,
 	MessageSquare,
 	Mic,
@@ -407,6 +410,24 @@ const features = [
 		icon: Zap,
 		description:
 			"No downloads, no plugins. Share a link and start in seconds from any browser.",
+	},
+	{
+		title: "GitHub integration",
+		icon: GitBranch,
+		description:
+			"Create issues, look up repos, and reference code — all without leaving the call.",
+	},
+	{
+		title: "Google Calendar integration",
+		icon: Calendar,
+		description:
+			"Schedule meetings, view upcoming events, and sync your calendar in one click.",
+	},
+	{
+		title: "Web search built in",
+		icon: Globe,
+		description:
+			"Search the web mid-conversation to find answers, references, and resources instantly.",
 	},
 ];
 

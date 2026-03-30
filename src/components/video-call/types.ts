@@ -58,7 +58,16 @@ export interface ActionItemFeedItem extends FeedItemBase {
 	isDone: boolean;
 }
 
-export type FeedItem = ArtifactFeedItem | NoteFeedItem | ActionItemFeedItem;
+export interface FileFeedItem extends FeedItemBase {
+	type: "file";
+	metadata?: string; // JSON: { fileUrl, fileName, fileSize, fileType }
+}
+
+export type FeedItem =
+	| ArtifactFeedItem
+	| NoteFeedItem
+	| ActionItemFeedItem
+	| FileFeedItem;
 
 export type TimelineEntry =
 	| { kind: "chat"; data: ChatMessage }

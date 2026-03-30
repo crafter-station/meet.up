@@ -17,12 +17,12 @@ export function useVoiceActions({
 	transcriptText,
 	roomId,
 	enabled,
-	onExecuted,
+	onAccept,
 }: {
 	transcriptText: string;
 	roomId: string;
 	enabled: boolean;
-	onExecuted?: (summary: string) => void;
+	onAccept?: (command: string) => void;
 }) {
 	const lastLengthRef = useRef(0);
 	const processingRef = useRef(false);
@@ -32,7 +32,6 @@ export function useVoiceActions({
 	const [pendingAction, setPendingAction] = useState<PendingVoiceAction | null>(
 		null,
 	);
-	const [executing, setExecuting] = useState(false);
 
 	const processChunk = useCallback(async () => {
 		if (processingRef.current || pendingAction) return;
@@ -57,7 +56,7 @@ export function useVoiceActions({
 			const res = await fetch(`/api/r/${roomId}/voice-actions`, {
 				method: "POST",
 				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify({ command, mode: "detect" }),
+				body: JSON.stringify({ command }),
 			});
 
 			if (!res.ok) {
@@ -77,35 +76,11 @@ export function useVoiceActions({
 		}
 	}, [roomId, pendingAction]);
 
-	const acceptAction = useCallback(async () => {
+	const acceptAction = useCallback(() => {
 		if (!pendingAction) return;
-		setExecuting(true);
-
-		try {
-			const res = await fetch(`/api/r/${roomId}/voice-actions`, {
-				method: "POST",
-				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify({
-					command: pendingAction.command,
-					mode: "execute",
-				}),
-			});
-
-			if (res.ok) {
-				const data = await res.json();
-				onExecuted?.(
-					data.summary && data.summary !== "Action executed"
-						? data.summary
-						: pendingAction.proposal,
-				);
-			}
-		} catch {
-			// silently fail — the proposal card already dismissed
-		} finally {
-			setPendingAction(null);
-			setExecuting(false);
-		}
-	}, [roomId, pendingAction, onExecuted]);
+		onAccept?.(pendingAction.command);
+		setPendingAction(null);
+	}, [pendingAction, onAccept]);
 
 	const rejectAction = useCallback(() => {
 		setPendingAction(null);
@@ -121,5 +96,5 @@ export function useVoiceActions({
 		return () => clearInterval(interval);
 	}, [enabled, processChunk]);
 
-	return { pendingAction, executing, acceptAction, rejectAction };
+	return { pendingAction, acceptAction, rejectAction };
 }

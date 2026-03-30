@@ -330,6 +330,27 @@ export function useRealtimeChat(
 		[username],
 	);
 
+	// Add a feed item that was already persisted (e.g. by the upload API route)
+	const addFeedItemLocal = useCallback(
+		(item: FeedItem) => {
+			setFeedItems((prev) => {
+				if (prev.some((f) => f.id === item.id)) return prev;
+				return [...prev, item];
+			});
+
+			channelRef.current?.send({
+				type: "broadcast",
+				event: "chat-event",
+				payload: {
+					type: "feeditem:add",
+					item,
+					username,
+				} satisfies ChatEvent & { username: string },
+			});
+		},
+		[username],
+	);
+
 	const addFeedItem = useCallback(
 		async (item: {
 			type: string;
@@ -401,6 +422,7 @@ export function useRealtimeChat(
 		sendAs,
 		addTranscript,
 		addFeedItem,
+		addFeedItemLocal,
 		updateFeedItem,
 		broadcastPartial,
 		broadcastMeetingEnded,

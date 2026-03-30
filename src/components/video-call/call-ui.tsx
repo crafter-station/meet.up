@@ -10,14 +10,17 @@ import {
   useActiveSpeakerId,
   useParticipantIds,
 } from "@daily-co/daily-react";
-import { Check, Loader2, X } from "lucide-react";
+import { Check, X } from "lucide-react";
 import type { PointerEvent as ReactPointerEvent } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { CallControls } from "./call-controls";
 import { FlyingReactionsOverlay } from "./flying-reactions-overlay";
 import { MeetingFeed } from "./meeting-feed";
 import { ParticipantTile } from "./participant-tile";
-import { TranscriptionOverlay } from "./transcription-overlay";
+import {
+  TranscriptionOverlay,
+  type TranscriptionOverlayHandle,
+} from "./transcription-overlay";
 
 const FEED_PANEL_WIDTH_KEY = "meetup.feedPanelWidth";
 const DEFAULT_FEED_PANEL_WIDTH = 320;
@@ -147,7 +150,6 @@ export function CallUI({
     removeFlyingReaction,
     sendFlyingReaction,
     send,
-    sendAs,
     addTranscript,
     addFeedItem,
     updateFeedItem,
@@ -198,18 +200,24 @@ export function CallUI({
     return msgs.map((m) => `${m.username}: ${m.content}`).join("\n");
   }, [messages]);
 
-  const onVoiceActionExecuted = useCallback(
-    (summary: string) => void sendAs(summary, "meet.up AI"),
-    [sendAs],
+  const transcriptionHandleRef = useRef<TranscriptionOverlayHandle | null>(null);
+
+  const onVoiceActionAccepted = useCallback(
+    (command: string) => {
+      // Open the transcription overlay if it's hidden
+      if (!mobileTranscriptionOpen) setMobileTranscriptionOpen(true);
+      // Send the command into the AI chat
+      transcriptionHandleRef.current?.sendAiMessage(command);
+    },
+    [mobileTranscriptionOpen],
   );
 
-  const { pendingAction, executing, acceptAction, rejectAction } =
-    useVoiceActions({
-      transcriptText,
-      roomId,
-      enabled: voiceActionsEnabled,
-      onExecuted: onVoiceActionExecuted,
-    });
+  const { pendingAction, acceptAction, rejectAction } = useVoiceActions({
+    transcriptText,
+    roomId,
+    enabled: voiceActionsEnabled,
+    onAccept: onVoiceActionAccepted,
+  });
 
   // Merge local partial with remote partials
   const allPartials: Record<string, string> = { ...partialTexts };
@@ -241,21 +249,15 @@ export function CallUI({
                   size="sm"
                   variant="outline"
                   onClick={rejectAction}
-                  disabled={executing}
                 >
                   <X className="h-4 w-4 mr-1" />
                   Reject
                 </Button>
                 <Button
                   size="sm"
-                  onClick={() => void acceptAction()}
-                  disabled={executing}
+                  onClick={acceptAction}
                 >
-                  {executing ? (
-                    <Loader2 className="h-4 w-4 mr-1 animate-spin" />
-                  ) : (
-                    <Check className="h-4 w-4 mr-1" />
-                  )}
+                  <Check className="h-4 w-4 mr-1" />
                   Accept
                 </Button>
               </div>
@@ -291,6 +293,7 @@ export function CallUI({
           onMobileOpenChange={setMobileTranscriptionOpen}
           isOwner={isOwner}
           transcription={{ isActive, isListening, start, stop }}
+          handleRef={transcriptionHandleRef}
           onPinToFeed={async (content, _title, metadata) => {
             const itemId = await addFeedItem({
               type: "artifact",

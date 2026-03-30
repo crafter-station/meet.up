@@ -145,6 +145,10 @@ const DEFAULT_SUGGESTIONS = [
   "Write tldr",
 ];
 
+export interface TranscriptionOverlayHandle {
+  sendAiMessage: (text: string) => void;
+}
+
 interface TranscriptionOverlayProps {
   username: string;
   roomId: string;
@@ -160,6 +164,7 @@ interface TranscriptionOverlayProps {
     stop: () => void;
   };
   onPinToFeed?: (content: string, title?: string, metadata?: string) => void;
+  handleRef?: React.RefObject<TranscriptionOverlayHandle | null>;
 }
 
 export function TranscriptionOverlay({
@@ -172,6 +177,7 @@ export function TranscriptionOverlay({
   isOwner = false,
   transcription,
   onPinToFeed,
+  handleRef,
 }: TranscriptionOverlayProps) {
   const isMobile = useIsMobile();
   const panelRef = useRef<HTMLDivElement>(null);
@@ -334,6 +340,11 @@ export function TranscriptionOverlay({
     },
     [isAiLoading, sendMessage],
   );
+
+  // Expose sendAiMessage to parent via ref
+  useEffect(() => {
+    if (handleRef) handleRef.current = { sendAiMessage };
+  }, [handleRef, sendAiMessage]);
 
   const newChat = useCallback(() => {
     setAiMessages([]);

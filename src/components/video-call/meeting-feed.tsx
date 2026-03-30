@@ -21,6 +21,8 @@ interface MeetingFeedProps {
     updates: { content?: string; title?: string; isDone?: boolean },
   ) => void;
   username: string;
+  roomId: string;
+  onFileUploaded?: (item: FeedItem) => void;
   expanded?: boolean;
   onToggleExpand?: () => void;
 }
@@ -32,6 +34,8 @@ export function MeetingFeed({
   onAddFeedItem,
   onUpdateFeedItem,
   username,
+  roomId,
+  onFileUploaded,
   expanded,
   onToggleExpand,
 }: MeetingFeedProps) {
@@ -92,6 +96,9 @@ export function MeetingFeed({
         onAddActionItem={(content) =>
           onAddFeedItem({ type: "action_item", content })
         }
+        roomId={roomId}
+        username={username}
+        onFileUploaded={onFileUploaded}
       />
     </div>
   );

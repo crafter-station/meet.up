@@ -8,6 +8,7 @@ import type {
 import { useMemo } from "react";
 import { ChatBubble } from "./feed-items/chat-bubble";
 import { ArtifactCard } from "./feed-items/artifact-card";
+import { FileCard } from "./feed-items/file-card";
 import { NoteCard } from "./feed-items/note-card";
 import { ActionItemCard } from "./feed-items/action-item-card";
 
@@ -92,6 +93,8 @@ export function FeedTimeline({
                 }
               />
             );
+          case "file":
+            return <FileCard key={item.id} item={item} />;
         }
       })}
     </div>

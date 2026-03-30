@@ -330,7 +330,7 @@ export async function addFeedItem(
 		item: {
 			id,
 			username,
-			type: item.type as "artifact" | "note" | "action_item",
+			type: item.type as "artifact" | "note" | "action_item" | "file",
 			title: item.title,
 			content: item.content,
 			metadata: item.metadata,
@@ -380,7 +380,7 @@ export async function getFeedItems(roomDailyName: string) {
 		items: rows.map((r) => ({
 			id: r.id,
 			username: r.username,
-			type: r.type as "artifact" | "note" | "action_item",
+			type: r.type as "artifact" | "note" | "action_item" | "file",
 			title: r.title ?? undefined,
 			content: r.content,
 			metadata: r.metadata ?? undefined,

@@ -170,6 +170,7 @@ export function CallUI({
     send,
     addTranscript,
     addFeedItem,
+    addFeedItemLocal,
     updateFeedItem,
     broadcastPartial,
     broadcastMeetingEnded,
@@ -360,6 +361,8 @@ export function CallUI({
               onAddFeedItem={addFeedItem}
               onUpdateFeedItem={updateFeedItem}
               username={username}
+              roomId={roomId}
+              onFileUploaded={addFeedItemLocal}
               expanded={feedExpanded}
               onToggleExpand={isDesktopSidebar ? toggleFeedExpand : undefined}
             />

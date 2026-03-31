@@ -66,17 +66,11 @@ function Navbar({
 				<div className="flex items-center gap-6">
 					<Link
 						href="/"
-						className="flex items-center gap-2 text-foreground"
+						className="flex items-center"
 					>
-						<Video className="h-4 w-4" />
-						<span
-							className="font-semibold text-sm"
-							style={{ letterSpacing: "-0.02em" }}
-						>
-							meet.up
-						</span>
+						<img src="/meet up hor.svg" alt="meet.up" className="h-5" />
 					</Link>
-					<nav className="hidden md:flex items-center gap-1 text-sm">
+					<nav className="hidden md:flex items-center gap-1 text-base">
 						{[
 							{ label: "Features", id: "features" },
 							{ label: "AI", id: "ai" },
@@ -154,7 +148,7 @@ function DashboardMockup() {
 	return (
 		<motion.div
 			className="w-full h-full flex overflow-hidden"
-			style={{ backgroundColor: "#09090B" }}
+			style={{ backgroundColor: "#0a0a0a" }}
 			variants={{ hidden: {}, visible: { transition: { staggerChildren: 0.3, delayChildren: 0.5 } } }}
 			initial="hidden"
 			animate="visible"
@@ -190,7 +184,7 @@ function DashboardMockup() {
 							<item.icon className="w-4 h-4" />
 							<span className="flex-1">{item.label}</span>
 							{item.active && (
-								<span className="bg-indigo-500/80 text-white text-[10px] min-w-[18px] h-[18px] flex items-center justify-center rounded-full font-medium px-1">
+								<span className="bg-[#ffba8f] text-white text-[10px] min-w-[18px] h-[18px] flex items-center justify-center rounded-full font-medium px-1">
 									1
 								</span>
 							)}
@@ -218,10 +212,10 @@ function DashboardMockup() {
 								}`}
 							>
 								{m.live && (
-									<span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shrink-0" />
+									<span className="w-2 h-2 rounded-full bg-[#ffba8f] animate-pulse shrink-0" />
 								)}
 								<span className="flex-1 truncate">{m.label}</span>
-								<span className={`text-[10px] shrink-0 ${m.live ? "text-emerald-400" : "text-zinc-600"}`}>
+								<span className={`text-[10px] shrink-0 ${m.live ? "text-[#ffba8f]" : "text-zinc-600"}`}>
 									{m.time}
 								</span>
 							</div>
@@ -238,7 +232,7 @@ function DashboardMockup() {
 			>
 				<div className="px-4 py-3 border-b border-zinc-800/50 flex items-center justify-between">
 					<div className="flex items-center gap-2">
-						<span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+						<span className="w-2 h-2 rounded-full bg-[#ffba8f] animate-pulse" />
 						<span className="text-white font-semibold text-sm">Q2 Roadmap Planning</span>
 					</div>
 					<span className="text-zinc-500 text-[10px]">32:14</span>
@@ -256,7 +250,7 @@ function DashboardMockup() {
 								key={p.name}
 								className={`rounded-lg flex flex-col items-center justify-center relative transition-all duration-300 ${
 									p.speaking
-										? "bg-zinc-800/80 ring-2 ring-indigo-500/50"
+										? "bg-zinc-800/80 ring-2 ring-[#ffba8f]/50"
 										: "bg-zinc-800/40"
 								}`}
 							>
@@ -269,7 +263,7 @@ function DashboardMockup() {
 										{[1, 2, 3, 4, 3].map((h, i) => (
 											<div
 												key={i}
-												className="w-0.5 bg-indigo-400 rounded-full animate-pulse"
+												className="w-0.5 bg-[#ffba8f] rounded-full animate-pulse"
 												style={{
 													height: `${h * 3}px`,
 													animationDelay: `${i * 0.15}s`,
@@ -287,8 +281,8 @@ function DashboardMockup() {
 				<div className="px-3 pb-3">
 					<div className="rounded-lg bg-zinc-800/60 border border-zinc-700/40 px-3 py-2">
 						<div className="flex items-center gap-1.5 mb-1">
-							<Captions className="w-3 h-3 text-indigo-400" />
-							<span className="text-[10px] text-indigo-400 font-medium">Live Transcription</span>
+							<Captions className="w-3 h-3 text-[#ffba8f]" />
+							<span className="text-[10px] text-[#ffba8f] font-medium">Live Transcription</span>
 						</div>
 						<p className="text-[11px] text-zinc-400">
 							<span className="text-zinc-200 font-medium">Sarah:</span>{" "}
@@ -316,7 +310,7 @@ function DashboardMockup() {
 			{/* ── AI Feed Panel ── */}
 			<motion.div
 				className="flex-1 h-full flex flex-col overflow-hidden"
-				style={{ backgroundColor: "#09090B" }}
+				style={{ backgroundColor: "#0a0a0a" }}
 				variants={panelVariants}
 			>
 				<div className="px-5 py-3 border-b border-zinc-800/50 flex items-center justify-between shrink-0">
@@ -340,7 +334,7 @@ function DashboardMockup() {
 					</div>
 
 					<div className="flex justify-end">
-						<div className="rounded-lg bg-indigo-500/15 px-3 py-2 max-w-[80%]">
+						<div className="rounded-lg bg-[#ffba8f]/15 px-3 py-2 max-w-[80%]">
 							<p className="text-zinc-300 text-xs">I&apos;ve prepped the metrics deck 👍</p>
 						</div>
 					</div>
@@ -357,7 +351,7 @@ function DashboardMockup() {
 					{/* AI Artifact */}
 					<div className="rounded-lg border border-zinc-800/50 bg-zinc-900/30 overflow-hidden">
 						<div className="flex items-center gap-1.5 px-3 py-2 border-b border-zinc-800/30">
-							<Sparkles className="h-3.5 w-3.5 text-amber-400" />
+							<Sparkles className="h-3.5 w-3.5 text-[#ffba8f]" />
 							<span className="text-xs font-medium text-zinc-200">AI Summary</span>
 							<span className="text-[10px] text-zinc-600 ml-auto">just now</span>
 						</div>
@@ -376,11 +370,11 @@ function DashboardMockup() {
 								<div key={item} className="flex items-center gap-2">
 									<div
 										className={`h-3.5 w-3.5 rounded-full border shrink-0 flex items-center justify-center transition-all duration-500 ${
-											checked.includes(i) ? "border-emerald-500 bg-emerald-500/20" : "border-zinc-700"
+											checked.includes(i) ? "border-[#ffba8f] bg-[#ffba8f]/20" : "border-zinc-700"
 										}`}
 									>
 										{checked.includes(i) && (
-											<Check className="h-2 w-2 text-emerald-500" />
+											<Check className="h-2 w-2 text-[#ffba8f]" />
 										)}
 									</div>
 									<span
@@ -448,7 +442,7 @@ function FaqItem({ question, answer }: { question: string; answer: string }) {
 			<button
 				type="button"
 				onClick={() => setOpen(!open)}
-				className="flex w-full items-center justify-between py-5 text-left text-sm font-medium hover:text-foreground/80 transition-colors"
+				className="flex w-full items-center justify-between py-5 text-left text-base font-medium hover:text-foreground/80 transition-colors"
 			>
 				{question}
 				<ChevronDown
@@ -456,7 +450,7 @@ function FaqItem({ question, answer }: { question: string; answer: string }) {
 				/>
 			</button>
 			{open && (
-				<div className="pb-5 text-sm text-muted-foreground leading-relaxed">
+				<div className="pb-5 text-base text-muted-foreground leading-relaxed">
 					{answer}
 				</div>
 			)}
@@ -546,67 +540,63 @@ export default function Home() {
 						width: "1200px",
 						height: "800px",
 						background:
-							"radial-gradient(ellipse at center, rgba(99, 102, 241, 0.08) 0%, transparent 70%)",
+							"radial-gradient(ellipse at center, rgba(255, 186, 143, 0.08) 0%, transparent 70%)",
 					}}
 				/>
 
 				<div className="relative z-10 pt-16 flex flex-col">
-					<div className="w-full flex justify-center px-6 mt-16">
-						<div className="w-full max-w-4xl">
-							<motion.h1
-								initial={{ opacity: 0, y: 20 }}
-								animate={{ opacity: 1, y: 0 }}
-								transition={{ duration: 0.6 }}
-								className="font-serif text-4xl md:text-5xl lg:text-[56px] text-foreground text-balance"
-								style={sectionHeadingStyle}
+					<div className="w-full flex flex-col items-center px-6 mt-16">
+						<motion.img
+							src="/meet up ver.svg"
+							alt="meet.up"
+							className="h-40 md:h-56 lg:h-64"
+							initial={{ opacity: 0, y: 20 }}
+							animate={{ opacity: 1, y: 0 }}
+							transition={{ duration: 0.6 }}
+						/>
+						<motion.p
+							initial={{ opacity: 0, y: 20 }}
+							animate={{ opacity: 1, y: 0 }}
+							transition={{ duration: 0.6, delay: 0.1 }}
+							className="mt-8 text-xl md:text-2xl text-muted-foreground text-center"
+						>
+							One app for the entire meeting.
+							<br />
+							Video, transcription, and AI notes. No extra tools needed.
+						</motion.p>
+						<motion.div
+							initial={{ opacity: 0, y: 20 }}
+							animate={{ opacity: 1, y: 0 }}
+							transition={{ duration: 0.6, delay: 0.2 }}
+							className="relative z-20 mt-8 flex items-center gap-4"
+						>
+							<Button
+								onClick={createRoom}
+								disabled={creating}
+								className="h-12 px-6 text-base font-medium rounded-lg"
 							>
-								Video calls, purpose-built for teams that
-								ship
-							</motion.h1>
-							<motion.p
-								initial={{ opacity: 0, y: 20 }}
-								animate={{ opacity: 1, y: 0 }}
-								transition={{ duration: 0.6, delay: 0.1 }}
-								className="mt-6 text-lg text-muted-foreground"
-							>
-								Live transcription. AI-powered notes.
-								<br />
-								Smart summaries after every meeting.
-							</motion.p>
-							<motion.div
-								initial={{ opacity: 0, y: 20 }}
-								animate={{ opacity: 1, y: 0 }}
-								transition={{ duration: 0.6, delay: 0.2 }}
-								className="relative z-20 mt-8 flex items-center gap-4"
-							>
+								{creating
+									? "Creating..."
+									: "Start meeting"}
+							</Button>
+							{isSignedIn && (
 								<Button
-									onClick={createRoom}
-									disabled={creating}
-									className="h-11 px-5 text-sm font-medium rounded-lg"
+									variant="outline"
+									onClick={() => setScheduleOpen(true)}
+									className="h-12 px-6 text-base font-medium rounded-lg"
 								>
-									{creating
-										? "Creating..."
-										: "Start meeting"}
+									Schedule
 								</Button>
-								{isSignedIn && (
-									<Button
-										variant="outline"
-										onClick={() => setScheduleOpen(true)}
-										className="h-11 px-5 text-sm font-medium rounded-lg"
-									>
-										Schedule
-									</Button>
-								)}
-								<button
-									type="button"
-									onClick={() => setJoinOpen(true)}
-									className="text-muted-foreground font-medium hover:text-foreground transition-colors flex items-center gap-2 text-sm"
-								>
-									Join with a code
-									<ArrowRight className="h-4 w-4" />
-								</button>
-							</motion.div>
-						</div>
+							)}
+							<button
+								type="button"
+								onClick={() => setJoinOpen(true)}
+								className="text-muted-foreground font-medium hover:text-foreground transition-colors flex items-center gap-2 text-base"
+							>
+								Join with a code
+								<ArrowRight className="h-4 w-4" />
+							</button>
+						</motion.div>
 					</div>
 
 					{/* 3D Stage — full bleed */}
@@ -655,7 +645,7 @@ export default function Home() {
 									ease: [0.22, 1, 0.36, 1],
 								}}
 								style={{
-									backgroundColor: "#09090B",
+									backgroundColor: "#0a0a0a",
 									transformOrigin: "0 0",
 									backfaceVisibility: "hidden",
 									WebkitBackfaceVisibility: "hidden",
@@ -692,7 +682,7 @@ export default function Home() {
 								<div
 									className="absolute pointer-events-none z-[11]"
 									style={{
-										background: "linear-gradient(180deg, transparent 0%, #09090B 100%)",
+										background: "linear-gradient(180deg, transparent 0%, #0a0a0a 100%)",
 										height: "80%",
 										bottom: "-2px",
 										left: "-180px",
@@ -707,7 +697,7 @@ export default function Home() {
 
 					{/* Mobile fallback */}
 					<div className="md:hidden px-6 mt-8">
-						<div className="rounded-xl border border-zinc-800/50 overflow-hidden" style={{ backgroundColor: "#09090B" }}>
+						<div className="rounded-xl border border-zinc-800/50 overflow-hidden" style={{ backgroundColor: "#0a0a0a" }}>
 							<DashboardMockup />
 						</div>
 					</div>
@@ -742,25 +732,25 @@ export default function Home() {
 										href={meeting.isLive ? `/${meeting.dailyRoomName}` : `/summary/${meeting.dailyRoomName}`}
 										{...fadeUp}
 										transition={{ duration: 0.4, delay: i * 0.05 }}
-										className="group rounded-xl border border-border/40 hover:border-border/70 bg-card/20 hover:bg-card/40 p-4 transition-all cursor-pointer block"
+										className="group rounded-xl border border-border hover:border-[#ffba8f]/50 bg-card hover:bg-card/80 p-5 transition-all cursor-pointer block"
 									>
 										<div className="flex items-start justify-between mb-2">
-											<h3 className="text-sm font-medium text-foreground truncate flex-1 mr-2">
+											<h3 className="text-base font-medium text-foreground truncate flex-1 mr-2">
 												{meeting.title ?? meeting.dailyRoomName}
 											</h3>
 											{meeting.isLive && (
-												<span className="flex items-center gap-1 text-[10px] text-emerald-400 shrink-0">
-													<span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+												<span className="flex items-center gap-1 text-[10px] text-[#ffba8f] shrink-0">
+													<span className="w-1.5 h-1.5 rounded-full bg-[#ffba8f] animate-pulse" />
 													Live
 												</span>
 											)}
 										</div>
 										{meeting.summary && (
-											<p className="text-xs text-muted-foreground line-clamp-2 mb-3">
+											<p className="text-sm text-foreground/60 line-clamp-2 mb-3">
 												{meeting.summary}
 											</p>
 										)}
-										<div className="flex items-center gap-3 text-[11px] text-muted-foreground/60">
+										<div className="flex items-center gap-3 text-xs text-foreground/50">
 											<span className="flex items-center gap-1">
 												<Users className="w-3 h-3" />
 												{meeting.participantCount}
@@ -856,7 +846,7 @@ export default function Home() {
 											<h3 className="text-foreground font-medium text-lg leading-tight mb-2">
 												{card.title}
 											</h3>
-											<p className="text-muted-foreground text-sm">
+											<p className="text-muted-foreground text-base">
 												{card.description}
 											</p>
 										</div>
@@ -931,7 +921,7 @@ export default function Home() {
 									<div className="bg-card/30 border border-border/40 rounded-xl p-5 space-y-3">
 										<div className="flex items-center gap-2 mb-4">
 											<Captions className="h-4 w-4 text-primary" />
-											<span className="text-sm text-muted-foreground">
+											<span className="text-base text-muted-foreground">
 												Live{" "}
 												<span className="text-foreground">
 													Transcription
@@ -990,7 +980,7 @@ export default function Home() {
 									<div className="bg-card/30 border border-border/40 rounded-xl p-5">
 										<div className="flex items-center gap-2 mb-4">
 											<Sparkles className="h-4 w-4 text-amber" />
-											<span className="text-sm text-muted-foreground">
+											<span className="text-base text-muted-foreground">
 												AI{" "}
 												<span className="text-foreground">
 													Summary
@@ -1096,13 +1086,13 @@ export default function Home() {
 					<div className="flex items-center gap-3">
 						<Button
 							variant="outline"
-							className="h-11 px-5 rounded-lg text-sm font-medium border-border/50"
+							className="h-12 px-6 rounded-lg text-base font-medium border-border/50"
 							onClick={() => setJoinOpen(true)}
 						>
 							Join a meeting
 						</Button>
 						<Button
-							className="h-11 px-5 rounded-lg text-sm font-medium"
+							className="h-12 px-6 rounded-lg text-base font-medium"
 							onClick={createRoom}
 							disabled={creating}
 						>
@@ -1115,9 +1105,8 @@ export default function Home() {
 			{/* ─── Footer ─── */}
 			<footer className="border-t border-border/30 py-12 px-6">
 				<div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
-					<div className="flex items-center gap-2 text-muted-foreground">
-						<Video className="h-4 w-4" />
-						<span className="text-sm font-medium">meet.up</span>
+					<div className="flex items-center text-muted-foreground">
+						<img src="/meet up hor.svg" alt="meet.up" className="h-5 opacity-50" />
 					</div>
 					<p className="text-xs text-muted-foreground/50">
 						Video calls with superpowers.

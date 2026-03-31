@@ -11,7 +11,6 @@ import {
 	Settings,
 	Sparkles,
 	Users,
-	Video,
 } from "lucide-react";
 import { ScheduleMeetingDialog } from "@/components/schedule-meeting-dialog";
 import { prefetchSummary } from "@/lib/summary-cache";
@@ -97,10 +96,7 @@ export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
 							render={<Link href="/" />}
 							className="data-[slot=sidebar-menu-button]:!p-1.5"
 						>
-							<Video className="h-4 w-4" />
-							<span className="text-base font-semibold tracking-tight">
-								meet.up
-							</span>
+							<img src="/meet up hor.svg" alt="meet.up" className="h-5" />
 						</SidebarMenuButton>
 					</SidebarMenuItem>
 				</SidebarMenu>
@@ -142,7 +138,7 @@ export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
 											}
 											className="h-auto py-2"
 										>
-											<span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shrink-0" />
+											<span className="w-2 h-2 rounded-full bg-[#ffba8f] animate-pulse shrink-0" />
 											<span className="truncate">
 												{meeting.title ?? meeting.dailyRoomName}
 											</span>

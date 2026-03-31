@@ -17,7 +17,7 @@ import {
 	Users,
 } from "lucide-react";
 import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
 	OAuthIntegrationCard,
 	type ConnectionStatus,
@@ -44,6 +44,10 @@ export function SettingsClient() {
 	>([]);
 	const [loadingMeetings, setLoadingMeetings] = useState(true);
 	const [connections, setConnections] = useState<ConnectionStatus[]>([]);
+	const [meetingListView, setMeetingListView] = useState<
+		"upcoming" | "past"
+	>("upcoming");
+	const [nowMs] = useState(() => Date.now());
 
 	const fetchMeetings = () => {
 		setLoadingMeetings(true);
@@ -63,8 +67,8 @@ export function SettingsClient() {
 
 	useEffect(() => {
 		if (!isLoaded) return;
-		fetchMeetings();
-		fetchConnections();
+		void Promise.resolve().then(fetchMeetings);
+		void Promise.resolve().then(fetchConnections);
 
 		const params = new URLSearchParams(window.location.search);
 		const oauthSuccess = params.get("oauth_success");
@@ -83,6 +87,26 @@ export function SettingsClient() {
 		navigator.clipboard.writeText(code);
 		notify("success", { title: "Room code copied" });
 	};
+
+	const { upcomingMeetings, pastMeetings } = useMemo(() => {
+		const graceMs = 10 * 60 * 1000;
+
+		const isPast = (m: ScheduledMeeting) =>
+			m.hasEnded || (!m.isLive && m.scheduledAt < nowMs - graceMs);
+
+		const upcoming = scheduledMeetings
+			.filter((m) => !isPast(m))
+			.sort((a, b) => a.scheduledAt - b.scheduledAt);
+
+		const past = scheduledMeetings
+			.filter((m) => isPast(m))
+			.sort((a, b) => b.scheduledAt - a.scheduledAt);
+
+		return { upcomingMeetings: upcoming, pastMeetings: past };
+	}, [scheduledMeetings, nowMs]);
+
+	const visibleMeetings =
+		meetingListView === "upcoming" ? upcomingMeetings : pastMeetings;
 
 	if (!isLoaded) {
 		return (
@@ -110,13 +134,52 @@ export function SettingsClient() {
 						<h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
 							Scheduled Meetings
 						</h2>
-						<Button
-							size="sm"
-							onClick={() => setScheduleOpen(true)}
-						>
-							<CalendarPlus className="h-3.5 w-3.5" />
-							<span className="ml-1.5">Schedule</span>
-						</Button>
+						<div className="flex items-center gap-2">
+							<div className="flex items-center rounded-lg border border-border/60 bg-muted/10 p-0.5">
+								<Button
+									type="button"
+									size="sm"
+									variant={
+										meetingListView === "upcoming"
+											? "secondary"
+											: "ghost"
+									}
+									onClick={() =>
+										setMeetingListView("upcoming")
+									}
+									className="h-7 px-2.5"
+								>
+									Upcoming
+									<span className="ml-1.5 text-[10px] text-muted-foreground">
+										{upcomingMeetings.length}
+									</span>
+								</Button>
+								<Button
+									type="button"
+									size="sm"
+									variant={
+										meetingListView === "past"
+											? "secondary"
+											: "ghost"
+									}
+									onClick={() => setMeetingListView("past")}
+									className="h-7 px-2.5"
+								>
+									Past
+									<span className="ml-1.5 text-[10px] text-muted-foreground">
+										{pastMeetings.length}
+									</span>
+								</Button>
+							</div>
+
+							<Button
+								size="sm"
+								onClick={() => setScheduleOpen(true)}
+							>
+								<CalendarPlus className="h-3.5 w-3.5" />
+								<span className="ml-1.5">Schedule</span>
+							</Button>
+						</div>
 					</div>
 
 					{loadingMeetings ? (
@@ -127,12 +190,15 @@ export function SettingsClient() {
 						<p className="text-sm text-muted-foreground py-4">
 							No scheduled meetings yet.
 						</p>
+					) : visibleMeetings.length === 0 ? (
+						<p className="text-sm text-muted-foreground py-4">
+							{meetingListView === "upcoming"
+								? "No upcoming meetings."
+								: "No past meetings."}
+						</p>
 					) : (
 						<div className="space-y-3">
-							{scheduledMeetings.map((meeting) => {
-								const isPast =
-									meeting.scheduledAt < Date.now() &&
-									!meeting.isLive;
+							{visibleMeetings.map((meeting) => {
 								return (
 									<div
 										key={meeting.id}
@@ -205,6 +271,7 @@ export function SettingsClient() {
 													</span>
 												</div>
 											</div>
+											{meetingListView === "upcoming" && (
 											<Link href={`/${meeting.roomCode}`}>
 												<Button
 													variant="outline"
@@ -216,6 +283,7 @@ export function SettingsClient() {
 													</span>
 												</Button>
 											</Link>
+										)}
 										</div>
 									</div>
 								);

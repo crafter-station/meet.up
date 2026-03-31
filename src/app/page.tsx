@@ -28,6 +28,7 @@ import {
 	MessageSquare,
 	Mic,
 	PenLine,
+	Play,
 	Plus,
 	Sparkles,
 	Users,
@@ -597,6 +598,21 @@ export default function Home() {
 								<ArrowRight className="h-4 w-4" />
 							</button>
 						</motion.div>
+						<motion.button
+							type="button"
+							initial={{ opacity: 0, y: 20 }}
+							animate={{ opacity: 1, y: 0 }}
+							transition={{ duration: 0.6, delay: 0.35 }}
+							onClick={() =>
+								document
+									.getElementById("demo")
+									?.scrollIntoView({ behavior: "smooth" })
+							}
+							className="mt-10 flex items-center gap-2 text-[#ffba8f] hover:text-[#ffc9a3] transition-colors text-base font-medium"
+						>
+							<Play className="h-5 w-5 fill-current" />
+							Watch the demo
+						</motion.button>
 					</div>
 
 					{/* 3D Stage — full bleed */}
@@ -701,6 +717,31 @@ export default function Home() {
 							<DashboardMockup />
 						</div>
 					</div>
+				</div>
+			</section>
+
+			{/* ─── Video Demo ─── */}
+			<section id="demo" className="relative z-20 py-20">
+				<div className="w-full flex justify-center px-6">
+					<motion.div
+						{...fadeUp}
+						transition={{ duration: 0.6 }}
+						className="w-full max-w-5xl"
+					>
+						<div
+							className="relative w-full rounded-2xl border border-border overflow-hidden"
+							style={{ aspectRatio: "16/9" }}
+						>
+							<iframe
+								src="https://www.youtube.com/embed/xL-AqoVZm3Y?rel=0&modestbranding=1"
+								title="meet.up demo"
+								allow="autoplay; encrypted-media; fullscreen"
+								allowFullScreen
+								className="absolute inset-0 w-full h-full"
+								style={{ border: "none" }}
+							/>
+						</div>
+					</motion.div>
 				</div>
 			</section>
 

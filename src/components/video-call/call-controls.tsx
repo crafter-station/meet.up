@@ -22,14 +22,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { endMeetingQuick } from "@/app/actions";
 import { CamToggle, MicToggle } from "@/components/media-toggles";
 import { Button } from "@/components/ui/button";
-import {
-	Dialog,
-	DialogContent,
-	DialogDescription,
-	DialogHeader,
-	DialogTitle,
-	DialogTrigger,
-} from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import type { PendingRequest } from "@/hooks/use-admission";
@@ -237,8 +230,36 @@ export function CallControls({
 				? "Waiting"
 				: "Off";
 
+	const copyShareCode = async () => {
+		if (!roomId) return;
+		try {
+			if (navigator.clipboard?.writeText) {
+				await navigator.clipboard.writeText(roomId);
+			} else {
+				window.prompt("Copy this room code:", roomId);
+				notify("warning", { title: "Copy not supported — copied manually" });
+				return;
+			}
+			notify("success", { title: "Room code copied" });
+		} catch {
+			notify("error", { title: "Failed to copy code" });
+		}
+	};
+
 	return (
-		<div className="flex items-center justify-center gap-2 border-t border-border px-4 py-3">
+		<div className="relative flex items-center justify-center gap-2 border-t border-border px-4 py-3">
+			{/* Desktop share code */}
+			{roomId && (
+				<Button		
+					variant="secondary"
+					size="sm"
+					onClick={() => void copyShareCode()}
+					className="hidden md:inline-flex fixed bottom-4 left-4 z-40 items-center gap-1 rounded-full bg-background/70 backdrop-blur px-3 py-1.5 text-xs font-mono text-muted-foreground border border-border/80 hover:bg-background hover:text-foreground transition-colors"
+					title="Click to copy room code"
+				>
+					<span className="truncate max-w-[8rem] cursor-pointer">{roomId}</span>
+				</Button>
+			)}
 			<MicToggle
 				isOn={isMicOn}
 				onToggle={toggleMic}
@@ -519,15 +540,11 @@ function JoinRequestNotificationOptIn() {
 			if (next === "granted") {
 				notify("success", {
 					title: "Browser notifications on",
-					description:
-						"You will get a system alert when someone asks to join while this tab is in the background.",
 					sound: false,
 				});
 			} else if (next === "denied") {
 				notify("warning", {
 					title: "Notifications blocked",
-					description:
-						"You can allow them later in your browser settings for this site.",
 					sound: false,
 				});
 			}
@@ -669,7 +686,7 @@ function SettingsDialog({
 					onVoiceActionsChange(data.voiceActionsEnabled);
 			})
 			.catch(() => {});
-	}, [roomId]);
+	}, [roomId, onVoiceActionsChange]);
 
 	const updateAutoAccept = async (next: boolean) => {
 		setLoading(true);

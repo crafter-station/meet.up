@@ -691,6 +691,7 @@ export async function getScheduledMeetings() {
 
 	if (scheduled.length === 0) return { meetings: [] };
 
+	const nowMs = Date.now();
 	const results = await Promise.all(
 		scheduled.map(async (sm) => {
 			const room = await db.query.rooms.findFirst({
@@ -700,15 +701,22 @@ export async function getScheduledMeetings() {
 				where: eq(meetingInvitees.scheduledMeetingId, sm.id),
 			});
 
+			const scheduledAtMs = sm.scheduledAt.getTime();
+			const roomExpiresAtMs = room?.expiresAt?.getTime();
+			const isWithinMeetingWindow =
+				roomExpiresAtMs != null &&
+				nowMs >= scheduledAtMs &&
+				nowMs <= roomExpiresAtMs;
+
 			return {
 				id: sm.id,
 				title: sm.title,
 				description: sm.description,
-				scheduledAt: sm.scheduledAt.getTime(),
+				scheduledAt: scheduledAtMs,
 				createdAt: sm.createdAt.getTime(),
 				roomCode: room?.dailyRoomName ?? "",
 				roomUrl: room?.dailyRoomUrl ?? "",
-				isLive: room ? !room.endedAt : false,
+				isLive: !!room && !room.endedAt && isWithinMeetingWindow,
 				hasEnded: !!room?.endedAt,
 				invitees: invitees.map((inv) => ({
 					email: inv.email,

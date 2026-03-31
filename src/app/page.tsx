@@ -400,7 +400,7 @@ const features = [
 		title: "Live transcription in every call",
 		icon: Captions,
 		description:
-			"Every word, every speaker — captured in real time. Pin moments to your feed.",
+			"Every word, every speaker, captured in real time. Pin moments to your feed.",
 	},
 	{
 		title: "AI that takes notes for you",
@@ -418,7 +418,7 @@ const features = [
 		title: "GitHub integration",
 		icon: GitBranch,
 		description:
-			"Create issues, look up repos, and reference code — all without leaving the call.",
+			"Create issues, look up repos, and reference code. All without leaving the call.",
 	},
 	{
 		title: "Google Calendar integration",
@@ -782,7 +782,7 @@ export default function Home() {
 								className="font-serif text-3xl sm:text-4xl md:text-5xl lg:text-[56px] max-w-md"
 								style={sectionHeadingStyle}
 							>
-								Built for teams that move fast
+								Everything your meeting needs. Nothing it doesn&apos;t.
 							</motion.h2>
 							<motion.div
 								{...fadeUp}
@@ -815,7 +815,7 @@ export default function Home() {
 										duration: 0.6,
 										delay: 0.2 + index * 0.1,
 									}}
-									className="bg-card/30 border border-border/40 hover:border-border/60 transition-colors cursor-default group overflow-hidden relative flex flex-col justify-end"
+									className="bg-card border border-border hover:border-[#ffba8f]/30 transition-colors cursor-default group overflow-hidden relative flex flex-col justify-end"
 									style={{
 										borderRadius: "30px",
 										height: "360px",
@@ -832,7 +832,7 @@ export default function Home() {
 												"linear-gradient(#000 60%, transparent 95%)",
 										}}
 									>
-										<card.icon className="h-16 w-16 text-muted-foreground/20" />
+										<card.icon className="h-16 w-16 text-[#ffba8f]/25" />
 									</div>
 
 									<div
@@ -850,7 +850,7 @@ export default function Home() {
 												{card.description}
 											</p>
 										</div>
-										<div className="w-8 h-8 rounded-full border border-border/50 flex items-center justify-center text-muted-foreground group-hover:border-border group-hover:text-foreground transition-colors flex-shrink-0">
+										<div className="w-8 h-8 rounded-full border border-border flex items-center justify-center text-muted-foreground group-hover:border-[#ffba8f]/50 group-hover:text-foreground transition-colors flex-shrink-0">
 											<Plus className="w-4 h-4" />
 										</div>
 									</div>
@@ -875,7 +875,7 @@ export default function Home() {
 							<span className="text-muted-foreground text-sm">
 								Artificial intelligence
 							</span>
-							<ChevronRight className="w-4 h-4 text-muted-foreground/50" />
+							<ChevronRight className="w-4 h-4 text-muted-foreground" />
 						</motion.div>
 
 						<motion.h2
@@ -907,18 +907,18 @@ export default function Home() {
 						>
 							<div className="grid grid-cols-1 md:grid-cols-2">
 								{/* Left: During the call */}
-								<div className="border-t border-r border-b border-border/40 pt-12 pr-8 md:pr-12 pb-16">
+								<div className="border-t border-r border-b border-border pt-12 pr-8 md:pr-12 pb-16">
 									<h3 className="text-foreground font-medium text-xl mb-3">
 										During the call
 									</h3>
-									<p className="text-muted-foreground text-sm mb-8">
+									<p className="text-muted-foreground text-base mb-8">
 										Live transcription with speaker
 										attribution, real-time notes, and a
 										unified feed for chat, action items,
 										and AI artifacts.
 									</p>
 
-									<div className="bg-card/30 border border-border/40 rounded-xl p-5 space-y-3">
+									<div className="bg-card border border-border rounded-xl p-5 space-y-3">
 										<div className="flex items-center gap-2 mb-4">
 											<Captions className="h-4 w-4 text-primary" />
 											<span className="text-base text-muted-foreground">
@@ -947,7 +947,7 @@ export default function Home() {
 												key={line.speaker}
 												className="flex items-start gap-2"
 											>
-												<span className="text-[11px] text-muted-foreground/50 w-10 shrink-0 pt-0.5">
+												<span className="text-[11px] text-foreground/50 w-10 shrink-0 pt-0.5">
 													{line.speaker}
 												</span>
 												<p className="text-sm text-foreground/70">
@@ -957,8 +957,8 @@ export default function Home() {
 										))}
 
 										<div className="flex items-center gap-1.5 pt-2">
-											<div className="h-2 w-2 rounded-full bg-green-500 animate-pulse" />
-											<span className="text-xs text-muted-foreground/50 italic">
+											<div className="h-2 w-2 rounded-full bg-[#ffba8f] animate-pulse" />
+											<span className="text-xs text-muted-foreground italic">
 												Recording...
 											</span>
 										</div>
@@ -966,18 +966,18 @@ export default function Home() {
 								</div>
 
 								{/* Right: After the call */}
-								<div className="border-t border-b border-border/40 pt-12 pl-8 md:pl-12 pb-16">
+								<div className="border-t border-b border-border pt-12 pl-8 md:pl-12 pb-16">
 									<h3 className="text-foreground font-medium text-xl mb-3">
 										After the call
 									</h3>
-									<p className="text-muted-foreground text-sm mb-8">
+									<p className="text-muted-foreground text-base mb-8">
 										AI-generated summaries with key
 										decisions, action items, and a
-										searchable transcript — ready to
+										searchable transcript. Ready to
 										share.
 									</p>
 
-									<div className="bg-card/30 border border-border/40 rounded-xl p-5">
+									<div className="bg-card border border-border rounded-xl p-5">
 										<div className="flex items-center gap-2 mb-4">
 											<Sparkles className="h-4 w-4 text-amber" />
 											<span className="text-base text-muted-foreground">
@@ -1015,14 +1015,14 @@ export default function Home() {
 													className="flex items-center gap-2"
 												>
 													<div
-														className={`h-4 w-4 rounded-full border shrink-0 flex items-center justify-center ${item.done ? "border-green-500 bg-green-500/20" : "border-border/50"}`}
+														className={`h-4 w-4 rounded-full border shrink-0 flex items-center justify-center ${item.done ? "border-[#ffba8f] bg-[#ffba8f]/20" : "border-border"}`}
 													>
 														{item.done && (
-															<Check className="h-2.5 w-2.5 text-green-500" />
+															<Check className="h-2.5 w-2.5 text-[#ffba8f]" />
 														)}
 													</div>
 													<span
-														className={`text-sm ${item.done ? "line-through text-muted-foreground/40" : "text-foreground/70"}`}
+														className={`text-sm ${item.done ? "line-through text-foreground/40" : "text-foreground/70"}`}
 													>
 														{item.text}
 													</span>
@@ -1058,7 +1058,7 @@ export default function Home() {
 							/>
 							<FaqItem
 								question="Do I need to install anything?"
-								answer="No. meet.up runs entirely in the browser. Just share a link and your participants can join instantly — no downloads, plugins, or extensions required."
+								answer="No. meet.up runs entirely in the browser. Just share a link and your participants can join instantly. No downloads, plugins, or extensions required."
 							/>
 							<FaqItem
 								question="How does live transcription work?"
@@ -1104,12 +1104,32 @@ export default function Home() {
 
 			{/* ─── Footer ─── */}
 			<footer className="border-t border-border/30 py-12 px-6">
-				<div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
-					<div className="flex items-center text-muted-foreground">
+				<div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-6">
+					<div className="flex items-center gap-8">
 						<img src="/meet up hor.svg" alt="meet.up" className="h-5 opacity-50" />
+						<nav className="hidden md:flex items-center gap-6 text-sm text-muted-foreground">
+							{[
+								{ label: "Features", id: "features" },
+								{ label: "AI", id: "ai" },
+								{ label: "FAQ", id: "faq" },
+							].map((item) => (
+								<button
+									key={item.id}
+									type="button"
+									onClick={() =>
+										document
+											.getElementById(item.id)
+											?.scrollIntoView({ behavior: "smooth" })
+									}
+									className="hover:text-foreground transition-colors"
+								>
+									{item.label}
+								</button>
+							))}
+						</nav>
 					</div>
-					<p className="text-xs text-muted-foreground/50">
-						Video calls with superpowers.
+					<p className="text-sm text-muted-foreground">
+						One app for the entire meeting.
 					</p>
 				</div>
 			</footer>

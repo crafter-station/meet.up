@@ -46,7 +46,7 @@ export function ConnectedBadge({
 }) {
 	return (
 		<div className="mt-4 flex items-center gap-3 rounded-md bg-muted/20 border border-border/30 px-3 py-2">
-			<Check className="h-3.5 w-3.5 text-emerald-400 shrink-0" />
+			<Check className="h-3.5 w-3.5 text-[#ffba8f] shrink-0" />
 			<div className="flex items-center gap-2 text-xs text-muted-foreground">
 				<span>
 					Connected as{" "}

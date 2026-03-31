@@ -39,7 +39,7 @@ function CopyButton({
 
   return (
     <button
-      className={`flex items-center gap-1 text-[11px] text-muted-foreground/50 hover:text-muted-foreground transition-colors ${className}`}
+      className={`flex items-center gap-1 text-xs text-foreground/60 hover:text-foreground transition-colors ${className}`}
       onClick={() => {
         navigator.clipboard.writeText(text);
         setCopied(true);
@@ -217,7 +217,7 @@ export function SummaryClient({
           <h1 className="text-2xl font-bold tracking-tight min-h-[2rem]">
             {title || "\u00A0"}
           </h1>
-          <p className="text-sm text-muted-foreground">
+          <p className="text-base text-foreground/60">
             {roomId} &middot;{" "}
             {date.toLocaleDateString("en-US", {
               weekday: "long",
@@ -244,23 +244,23 @@ export function SummaryClient({
           {/* Quick stats */}
           <div className="flex flex-wrap gap-3">
             {participantNames.length > 0 && (
-              <div className="flex items-center gap-1.5 rounded-full bg-muted/30 border border-border/30 px-3 py-1 text-xs text-muted-foreground">
+              <div className="flex items-center gap-1.5 rounded-full bg-muted border border-border px-3 py-1 text-xs text-foreground/60">
                 <Users className="h-3 w-3" />
                 {participantNames.join(", ")}
               </div>
             )}
-            <div className="flex items-center gap-1.5 rounded-full bg-muted/30 border border-border/30 px-3 py-1 text-xs text-muted-foreground">
+            <div className="flex items-center gap-1.5 rounded-full bg-muted border border-border px-3 py-1 text-xs text-foreground/60">
               <Clock className="h-3 w-3" />
               {transcriptCount} transcript messages
             </div>
             {artifacts.length > 0 && (
-              <div className="flex items-center gap-1.5 rounded-full bg-muted/30 border border-border/30 px-3 py-1 text-xs text-muted-foreground">
+              <div className="flex items-center gap-1.5 rounded-full bg-muted border border-border px-3 py-1 text-xs text-foreground/60">
                 <Sparkles className="h-3 w-3" />
                 {artifacts.length} artifact{artifacts.length > 1 ? "s" : ""}
               </div>
             )}
             {actionItems.length > 0 && (
-              <div className="flex items-center gap-1.5 rounded-full bg-muted/30 border border-border/30 px-3 py-1 text-xs text-muted-foreground">
+              <div className="flex items-center gap-1.5 rounded-full bg-muted border border-border px-3 py-1 text-xs text-foreground/60">
                 <CheckSquare className="h-3 w-3" />
                 {actionItems.filter((a) => a.isDone).length}/
                 {actionItems.length} done
@@ -272,7 +272,7 @@ export function SummaryClient({
           <div className="flex items-center gap-2 pt-1">
             <button
               type="button"
-              className="flex items-center gap-1.5 rounded-full border border-border/30 px-3 py-1 text-xs transition-colors hover:bg-muted/30 disabled:opacity-50"
+              className="flex items-center gap-1.5 rounded-full border border-border px-3 py-1 text-xs transition-colors hover:bg-muted/30 disabled:opacity-50"
               disabled={toggling}
               onClick={async () => {
                 setToggling(true);
@@ -283,8 +283,8 @@ export function SummaryClient({
             >
               {isPublic ? (
                 <>
-                  <Globe className="h-3 w-3 text-emerald-400" />
-                  <span className="text-emerald-400">Public</span>
+                  <Globe className="h-3 w-3 text-[#ffba8f]" />
+                  <span className="text-[#ffba8f]">Public</span>
                 </>
               ) : (
                 <>
@@ -295,7 +295,7 @@ export function SummaryClient({
             </button>
             <button
               type="button"
-              className="flex items-center gap-1.5 rounded-full border border-border/30 px-3 py-1 text-xs text-muted-foreground transition-colors hover:bg-muted/30"
+              className="flex items-center gap-1.5 rounded-full border border-border px-3 py-1 text-xs text-foreground/60 transition-colors hover:bg-muted/30"
               onClick={() => {
                 navigator.clipboard.writeText(window.location.href);
                 setLinkCopied(true);
@@ -304,8 +304,8 @@ export function SummaryClient({
             >
               {linkCopied ? (
                 <>
-                  <Check className="h-3 w-3 text-emerald-400" />
-                  <span className="text-emerald-400">Copied!</span>
+                  <Check className="h-3 w-3 text-[#ffba8f]" />
+                  <span className="text-[#ffba8f]">Copied!</span>
                 </>
               ) : (
                 <>
@@ -345,7 +345,7 @@ export function SummaryClient({
         {actionItems.length > 0 && (
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+              <h2 className="text-sm font-semibold uppercase tracking-wide text-foreground/70">
                 Action Items
               </h2>
               <CopyButton
@@ -361,13 +361,13 @@ export function SummaryClient({
                   {item.isDone ? (
                     <CircleCheck className="h-4 w-4 text-green-500 shrink-0" />
                   ) : (
-                    <Circle className="h-4 w-4 text-muted-foreground/40 shrink-0" />
+                    <Circle className="h-4 w-4 text-muted-foreground shrink-0" />
                   )}
                   <span
                     className={`text-sm ${
                       item.isDone
-                        ? "line-through text-muted-foreground/50"
-                        : "text-foreground/80"
+                        ? "line-through text-muted-foreground"
+                        : "text-foreground"
                     }`}
                   >
                     {item.content}
@@ -382,7 +382,7 @@ export function SummaryClient({
         {artifacts.length > 0 && (
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+              <h2 className="text-sm font-semibold uppercase tracking-wide text-foreground/70">
                 Pinned Artifacts
               </h2>
               <CopyButton
@@ -393,16 +393,16 @@ export function SummaryClient({
               {artifacts.map((a) => (
                 <div
                   key={a.id}
-                  className="rounded-lg border border-border/50 bg-muted/10 p-4"
+                  className="rounded-lg border border-border bg-muted p-4"
                 >
                   <div className="flex items-center gap-2 mb-2">
                     <Sparkles className="h-3.5 w-3.5 text-primary" />
                     <span className="text-sm font-medium">{a.title}</span>
-                    <span className="text-[10px] text-muted-foreground/50 ml-auto">
+                    <span className="text-xs text-foreground/60 ml-auto">
                       {a.time}
                     </span>
                   </div>
-                  <div className="text-foreground/80 text-sm leading-relaxed">
+                  <div className="text-foreground text-sm leading-relaxed">
                     <MessageResponse mode="static">{a.content}</MessageResponse>
                   </div>
                 </div>
@@ -415,7 +415,7 @@ export function SummaryClient({
         {notes.length > 0 && (
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+              <h2 className="text-sm font-semibold uppercase tracking-wide text-foreground/70">
                 Meeting Notes
               </h2>
               <CopyButton
@@ -426,19 +426,19 @@ export function SummaryClient({
               {notes.map((n) => (
                 <div
                   key={n.id}
-                  className="flex items-start gap-2 rounded-lg border border-border/50 bg-muted/10 p-3"
+                  className="flex items-start gap-2 rounded-lg border border-border bg-muted p-3"
                 >
                   <PenLine className="h-3.5 w-3.5 text-muted-foreground mt-0.5 shrink-0" />
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-0.5">
-                      <span className="text-xs text-muted-foreground">
+                      <span className="text-xs text-foreground/60">
                         {n.username}
                       </span>
-                      <span className="text-[10px] text-muted-foreground/50">
+                      <span className="text-xs text-foreground/60">
                         {n.time}
                       </span>
                     </div>
-                    <p className="text-sm text-foreground/80 whitespace-pre-wrap">
+                    <p className="text-sm text-foreground whitespace-pre-wrap">
                       {n.content}
                     </p>
                   </div>

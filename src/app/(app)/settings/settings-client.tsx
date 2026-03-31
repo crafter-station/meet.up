@@ -211,8 +211,8 @@ export function SettingsClient() {
 														{meeting.title}
 													</h3>
 													{meeting.isLive && (
-														<span className="flex items-center gap-1 text-[10px] text-emerald-400 shrink-0">
-															<span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+														<span className="flex items-center gap-1 text-[10px] text-[#ffba8f] shrink-0">
+															<span className="w-1.5 h-1.5 rounded-full bg-[#ffba8f] animate-pulse" />
 															Live
 														</span>
 													)}

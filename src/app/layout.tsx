@@ -23,7 +23,35 @@ const playfair = Playfair_Display({
 
 export const metadata: Metadata = {
 	title: "meet.up",
-	description: "Video calls with superpowers",
+	description:
+		"One app for the entire meeting. Video, transcription, and AI notes. No extra tools needed.",
+	metadataBase: new URL("https://meetup.crafter.run"),
+	icons: {
+		icon: "/MeetUp-Brand-FavIcon.png",
+	},
+	openGraph: {
+		title: "meet.up",
+		description:
+			"One app for the entire meeting. Video, transcription, and AI notes. No extra tools needed.",
+		url: "https://meetup.crafter.run",
+		siteName: "meet.up",
+		images: [
+			{
+				url: "/MeetUp-Brand_og.png",
+				width: 1200,
+				height: 630,
+				alt: "meet.up",
+			},
+		],
+		type: "website",
+	},
+	twitter: {
+		card: "summary_large_image",
+		title: "meet.up",
+		description:
+			"One app for the entire meeting. Video, transcription, and AI notes. No extra tools needed.",
+		images: ["/MeetUp-Brand_og.png"],
+	},
 };
 
 export default function RootLayout({
@@ -38,25 +66,25 @@ export default function RootLayout({
 				<ClerkProvider
 					appearance={{
 						variables: {
-							colorBackground: "#171717",
-							colorNeutral: "white",
-							colorPrimary: "#ffffff",
-							colorPrimaryForeground: "#171717",
-							colorForeground: "white",
-							colorInputForeground: "white",
-							colorInput: "#262626",
+							colorBackground: "#0a0a0a",
+							colorNeutral: "#fafafa",
+							colorPrimary: "#ffba8f",
+							colorPrimaryForeground: "#0a0a0a",
+							colorForeground: "#fafafa",
+							colorInputForeground: "#fafafa",
+							colorInput: "#1a1a1a",
 							borderRadius: "0.625rem",
 							fontFamily:
-								'"AOT Serial Mono", ui-monospace, monospace',
+								'"Adriane Text", ui-serif, Georgia, serif',
 						},
 						elements: {
 							card: {
-								backgroundColor: "#171717",
-								border: "1px solid #2e2e2e",
+								backgroundColor: "#0a0a0a",
+								border: "1px solid #2a2a2a",
 							},
 							userButtonPopoverCard: {
-								backgroundColor: "#171717",
-								border: "1px solid #2e2e2e",
+								backgroundColor: "#0a0a0a",
+								border: "1px solid #2a2a2a",
 							},
 							userPreviewMainIdentifier: {
 								color: "#fafafa",
@@ -71,20 +99,20 @@ export default function RootLayout({
 								color: "#a3a3a3",
 							},
 							modalContent: {
-								backgroundColor: "#171717",
-								border: "1px solid #2e2e2e",
+								backgroundColor: "#0a0a0a",
+								border: "1px solid #2a2a2a",
 							},
 							modalBackdrop: {
 								backgroundColor: "rgba(0,0,0,0.6)",
 							},
 							navbar: {
-								backgroundColor: "#171717",
+								backgroundColor: "#0a0a0a",
 							},
 							navbarButton: {
 								color: "#a3a3a3",
 							},
 							pageScrollBox: {
-								backgroundColor: "#171717",
+								backgroundColor: "#0a0a0a",
 							},
 							headerTitle: {
 								color: "#fafafa",
@@ -96,29 +124,29 @@ export default function RootLayout({
 								color: "#e5e5e5",
 							},
 							profileSection: {
-								borderColor: "#2e2e2e",
+								borderColor: "#2a2a2a",
 							},
 							formFieldLabel: {
 								color: "#a3a3a3",
 							},
 							formFieldInput: {
-								backgroundColor: "#262626",
-								borderColor: "#2e2e2e",
+								backgroundColor: "#1a1a1a",
+								borderColor: "#2a2a2a",
 								color: "#fafafa",
 							},
 							footer: {
-								backgroundColor: "#171717",
+								backgroundColor: "#0a0a0a",
 							},
 							footerActionLink: {
-								color: "#a3a3a3",
+								color: "#ffba8f",
 							},
 							badge: {
-								backgroundColor: "#2e2e2e",
+								backgroundColor: "#2a2a2a",
 								color: "#fafafa",
 							},
 							socialButtonsBlockButton: {
-								backgroundColor: "#262626",
-								borderColor: "#2e2e2e",
+								backgroundColor: "#1a1a1a",
+								borderColor: "#2a2a2a",
 								color: "#e5e5e5",
 							},
 						},

@@ -748,7 +748,7 @@ export function TranscriptionOverlay({
           ))}
         </div>
       )}
-      <div className="flex items-center gap-2 rounded-full border border-[#6b7a2f]/60 bg-muted/30 px-4 py-1.5">
+      <div className="flex items-center gap-2 rounded-full border border-[#ffba8f]/40 bg-muted/30 px-4 py-1.5">
         <input
           ref={aiInputRef}
           value={aiInput}
@@ -778,7 +778,7 @@ export function TranscriptionOverlay({
           onChange={handleChatFileSelect}
         />
         <button
-          className="flex h-6 w-6 items-center justify-center rounded-full bg-[#6b7a2f] text-white hover:bg-[#7d8e36] transition-colors disabled:opacity-30"
+          className="flex h-6 w-6 items-center justify-center rounded-full bg-[#ffba8f] text-[#0a0a0a] hover:bg-[#ffc9a3] transition-colors disabled:opacity-30"
           disabled={
             (!aiInput.trim() && pendingFiles.length === 0) || isAiLoading
           }

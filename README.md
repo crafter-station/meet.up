@@ -277,6 +277,16 @@ bun dev
 
 Open [http://localhost:3000](http://localhost:3000) to start.
 
+## Deployment (CubePath)
+
+The application is deployed on a CubePath virtual machine with the following specs:
+
+- **2 vCPU**
+- **4 GB RAM**
+- **80 GB Storage**
+
+[Dokploy](https://dokploy.com) is installed on the VM and handles the deployment via Docker Compose.
+
 ## Contributing
 
 Contributions welcome. Open an [issue](https://github.com/crafter-station/meet.up/issues) or submit a pull request.
